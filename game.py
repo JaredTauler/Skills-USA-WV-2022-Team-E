@@ -3,11 +3,7 @@ import json
 import pygame
 import pygame.draw
 import pygame.gfxdraw as gfx
-import client
 # import game
-import server
-from timer import Timer
-t = Timer()
 import pytmx
 import xml.etree.ElementTree as ET
 
@@ -216,21 +212,10 @@ class Game:
 	def __init__(self, screen, Forclient):
 		self.screen = screen
 		self.zoom_scale = .5
-		self.internal_surf_size = (2000,2000)
+		self.internal_surf_size = (2400,1400)
 		self.internal_surf = pg.Surface(self.internal_surf_size, pygame.SRCALPHA)
 		self.internal_rect = self.internal_surf.get_rect(center = (screen.rect.width/2, screen.rect.height/2))
 		self.internal_surf_size_vector = pg.math.Vector2(self.internal_surf_size)
-
-		# if not Forclient:
-		# 	pg.display.set_caption(str("SERVER"))
-		# 	self.server = server.Server()
-		# else:
-		# 	pg.display.set_caption(str("CLIENT"))
-		# self.net = client.Network()
-		# import socket
-		# self.net.connect((socket.gethostname(), 5059))
-		#
-		# self.lastresponse = None
 
 		self.space = pm.Space()  # PyMunk simulation
 		self.space.gravity = (0, .1)
@@ -250,67 +235,13 @@ class Game:
 		self.group["player"].append(Player(screen, self.space, False))
 		self.group["entity"] = []
 
-	# def processtick(self, screen):
-	# 	if self.net.response != []:
-	# 		# print(self.net.response)
-	# 		pass
-	# 	# Made in such a way that new ticks can come in while this process is happening.
-	# 	while self.net.response:
-	# 		for res in self.net.response[0]: # First response in list of responses
-	# 			for client_id in res: # Process each computers info seperate
-	# 				# Finally processing ticks.
-	# 				for tick in res[client_id]:
-	# 					# print(tick)
-	# 					if type(tick) is str:
-	# 						tick = json.loads(tick)
-	# 					if client_id == "0":
-	# 						if res.get("id"):
-	# 							id = res.get("id")
-	# 							self.client_id = id
-	# 							print("Client ID set to " + str(id))
-	# 					else:
-	# 						for player in tick.get("netplayer"): # If client has more than 1 player
-	# 							# print("Moving Netplayer")
-	# 							# Create netplayer
-	# 							if not self.group.get(client_id):
-	# 								self.group[client_id] = []
-	# 							if len(self.group.get(client_id)) == 0:
-	# 								self.group[client_id].append(Player(screen, self.space, True))
-	# 							# Pass tickdata to said netplayer for processing
-	# 							self.group[client_id][0].ticklist.append(
-	# 								tick.get("netplayer")[player]
-	# 							)
-	#
-	# 		self.net.response.pop(0)  # Tick has been processed, remove it from the list
-	#
-	# def toserver(self):
-	# 	# Send data to server
-	# 	data = {}
-	# 	for i, p in enumerate(self.group["player"]):
-	# 		pdata = {"location": p.body.position, "velocity": p.body.velocity}
-	# 		data["netplayer"] = {i: pdata}
-	#
-	# 	# Dont send if already sent same data last time.
-	# 	if self.lastresponse != data:
-	# 		self.net.send(data)
-	# 	self.lastresponse = data
-
 	def update(self, screen, group, input):
-		# self.processtick(screen) # Process ticks
 		self.space.step(1) # Step pymunk sim
 
-
 		# Update entities
-		# t.start()
-
 		self.internal_surf.fill([0, 0, 0])
 		for e in self.group.values():
 			for obj in e:
 				obj.update(screen, self.group, input, self.space, self.internal_surf)
-		# self.internal_surf.fill([0, 0, 0])
 		blit = pygame.transform.scale(self.internal_surf, self.internal_surf_size_vector * self.zoom_scale)
 		screen.surf.blit(blit, (0,0))
-		# self.internal_surf.blit(screen.surf, (0, 0))
-		# t.stop()
-
-		# self.toserver()
