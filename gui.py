@@ -86,7 +86,7 @@ class ClassButton():
             text,
             (SurfCenter(self.surf, text))
         )
-        screen.surf.blit(self.surf, self.rect)
+        screen.blit(self.surf, self.rect)
 
 
 class MainMenu:
@@ -134,7 +134,7 @@ class MainMenu:
         )
 
     def update(self, screen, group, Input):
-        screen.surf.fill([121, 100, 100])
+        screen.fill([121, 100, 100])
         for e in self.elem.values():
             act = e.update(screen, Input)
             if act != None:

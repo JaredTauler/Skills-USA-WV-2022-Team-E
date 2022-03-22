@@ -27,7 +27,8 @@ class ClassEventHandle():
         self.input["mouse"] = []
         self.input["order"] = []
 
-    def update(self,):
+    def update(self, surface):
+        resize = False
         for event in pg.event.get():
             # if event.type == pg.USEREVENT:
             #     frame += 1
@@ -47,12 +48,21 @@ class ClassEventHandle():
                     self.input["order"].pop(i)
                 self.input["order"].append(Key)
 
-        return self.input
+            if event.type == pg.VIDEORESIZE:
+                old_surface_saved = surface
+                surface = pg.display.set_mode((event.w, event.h),
+                                                  pg.RESIZABLE)
+                surface.blit(old_surface_saved, (0, 0))
+                del old_surface_saved
+                resize= True
+
+
+        return self.input, resize
 
 
 pg.init()
 
-SCREEN = pg.display.set_mode((1200, 800),vsync=1)
+SCREEN = pg.display.set_mode((1200, 800),pg.RESIZABLE, vsync=0)
 CLOCK = pg.time.Clock()
 
 GROUP = {}
@@ -65,16 +75,18 @@ INPUT = ClassEventHandle()
 # Initial GUI menu.
 GROUP[0] = gui.MainMenu(PLAYAREA[0])
 while True:
-    # Update Everything.
+    # Update Playareas
     for obj in GROUP.values():
-        obj.update(PLAYAREA[0], GROUP, INPUT.update())
-
-    SCREEN.blit(PLAYAREA[0].surf, (0,0))
-    pg.display.set_caption(str(CLOCK.get_fps()))
+        obj.update(SCREEN, GROUP, INPUT.update(PLAYAREA[0].surf))
 
     pg.display.update()
+
+    pg.display.set_caption(str(CLOCK.get_fps()))
+    #
+    # pg.display.update()
     if pg.key.get_pressed()[32]:
         CLOCK.tick(5)
     else:
-        CLOCK.tick(60)
+        CLOCK.tick(2000)
+        pass
 

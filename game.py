@@ -71,12 +71,19 @@ class Player():
 		# pm
 		self.body = pm.Body()
 		self.body.position = (100,100)
-		self.shape = pm.Poly.create_box(self.body, (30,30))
+		self.shape = pm.Poly.create_box(self.body, (32,32))
 		self.shape.density = 1
 		self.shape.friction = 1
 		self.shape.elasticity = .3
 		space.add(self.body, self.shape)
 		self.shape.collision_type = 1
+
+		self.surf = pg.Surface((32,32))
+		pygame.draw.rect(
+			self.surf,
+			[255, 255, 255],
+			(0, 0, 32, 32)
+		)
 
 	def update(self, screen, group, input, space, surf):
 
@@ -107,50 +114,41 @@ class Player():
 		mvspd = .2
 		self.body.velocity = SumTup((dir[0]*mvspd, dir[1]*mvspd), self.body.velocity)
 
-		if not self.netplayer:
-			# Update camera location
-			screen.location = (
-				-self.body.position.x + screen.rect.center[0],
-				-self.body.position.y + screen.rect.center[1]
-			)
+		# if not self.netplayer:
+		# 	# Update camera location
+		# 	screen.location = (
+		# 		-self.body.position.x + screen.get_centercenter[0],
+		# 		-self.body.position.y + screen.get_center()[1]
+		# 	)
 
 		# pg.draw.polygon(screen.surf, [255, 0, 0], verts(self.shape, screen))
 		x = int(self.shape.body.position[0])
 		y = int(self.shape.body.position[1])
-		pygame.draw.rect(
-			surf,
-			[255, 255, 255],
-			(x, y, 30, 30)
-		)
+		screen.blit(self.surf, (x,y))
 
 
 # Tiles
 class TileLayer():
-	def __init__(self):
+	def __init__(self, internal_surf_size):
 		self.tiles = []
 		self.tilemap = {}
-		# self.surf = pg.Surface((10000, 10000))
+		self.surf = pg.Surface(internal_surf_size, pg.SRCALPHA)
 
-	def draw(self, screen, space, surf):
-		# return
+
+	def draw(self, screen):
 		for tile in self.tiles:
-				# x = int(tile.shape.body.position[0] + screen.location[0])
-				# y = int(tile.shape.body.position[1] + screen.location[1])
 				x = int(tile.shape.body.position[0])
 				y = int(tile.shape.body.position[1])
 
-				pygame.draw.rect(
-					surf,
-					[255,255,255],
-					(x, y, 30, 30)
+				self.surf.blit(
+					self.tilemap[tile.textureid],
+					(x, y, 32, 32)
 				)
-				# print(verts(tile.shape, screen))
-				pass
-			# except:
-			# 	pass
+		self.surf = pg.transform.scale(self.surf, screen.get_rect().size)
 
-	def update(self, screen, group, input, space, surf):
-		self.draw(screen, space, surf)
+	# def update(self, screen, group, input, space, surf):
+	# 	pass
+	# 	# self.draw(screen, space, surf)
 
 
 class Tile(pg.sprite.Sprite):
@@ -188,40 +186,59 @@ class BG:
 class Game:
 
 	def LoadMap(self, TL, space):
+		n = 32
 		dir = "map/map1/"  # base dir from which files being getten from.
 
-		# PARSE TSX FILE
-		tree = ET.parse(dir + "base.tsx")
-		root = tree.getroot()
-		tiles = {}  # surfs
-		for child in root:  # For elem in XML
-			if child.tag == "tile":  # Make sure getting a tile
-				for i in child:
-					loc = dir + i.attrib["source"]
-					surf = pygame.image.load(dir + i.attrib["source"]).convert()
-					tiles[int(child.attrib["id"]) + 1] = surf
-		TL.tilemap = tiles
-		tm = pytmx.load_pygame(dir + ".tmx")  # FIXME stop this from auto loading images... ill do it myself thank you.
-		for x, y, gid, in tm.get_layer_by_name("terrain"):
-			# print(gid)
-			if gid == 0:
-				continue
-			n = 30
-			TL.tiles.append(Tile((n, n), (x * n, y * n), space, gid))
+		def strip_from_sheet(sheet, start, size, columns, rows=1):
+			frames = []
+			for j in range(rows):
+				for i in range(columns):
+					location = (start[0] + size[0] * i, start[1] + size[1] * j)
+					frames.append(sheet.subsurface(pg.Rect(location, size)))
+			return frames
+
+		sheet = pg.image.load(dir + 'rocks.png')
+		TL.tilemap = strip_from_sheet(sheet, (0, 0), (32, 32), 9, 4)
+
+		import json
+		with open(dir + "map1.json") as f:
+			js = json.load(f)
+			x = 0
+			y = 0
+			for gid in js["layers"][0]["data"]:
+				if gid != 0:
+					gid = gid -1
+					TL.tiles.append(Tile((n, n), (x * n, y * n), space, gid))
+
+				x += 1
+				if x == js["width"]:
+					y += 1
+					x = 0
 
 	def __init__(self, screen, Forclient):
 		self.screen = screen
+		self.surf = None
 		self.zoom_scale = .5
-		self.internal_surf_size = (2400,1400)
+
+		n = 32
+		ratio = (16,9)
+		tiles = 5
+		func = lambda ratio: (ratio*tiles)*n
+		self.internal_surf_size = (
+			func(ratio[0])
+			,func(ratio[1])
+		)
+
 		self.internal_surf = pg.Surface(self.internal_surf_size, pygame.SRCALPHA)
-		self.internal_rect = self.internal_surf.get_rect(center = (screen.rect.width/2, screen.rect.height/2))
+		self.internal_rect = self.internal_surf.get_rect(center = (screen.get_width()/2, screen.get_height()/2))
 		self.internal_surf_size_vector = pg.math.Vector2(self.internal_surf_size)
 
 		self.space = pm.Space()  # PyMunk simulation
 		self.space.gravity = (0, .1)
 
-		self.Terrain = TileLayer()
+		self.Terrain = TileLayer(self.internal_surf_size)
 		self.LoadMap(self.Terrain, self.space)
+		self.Terrain.draw(screen)
 		# bg = BG("bg.png")
 
 		self.group = {}
@@ -229,19 +246,23 @@ class Game:
 
 		self.group["world"] = []
 		# self.group["world"].append(bg)
-		self.group["world"].append(self.Terrain)
+		# self.group["world"].append(self.Terrain)
 
 		self.group["player"] = []
 		self.group["player"].append(Player(screen, self.space, False))
 		self.group["entity"] = []
-
-	def update(self, screen, group, input):
+		import copy
+	def update(self, screen, group, input, resize):
+		if resize:
+			self.Terrain.draw(screen)
 		self.space.step(1) # Step pymunk sim
 
 		# Update entities
-		self.internal_surf.fill([0, 0, 0])
+		self.internal_surf.fill([0,0,0])
 		for e in self.group.values():
 			for obj in e:
-				obj.update(screen, self.group, input, self.space, self.internal_surf)
-		blit = pygame.transform.scale(self.internal_surf, self.internal_surf_size_vector * self.zoom_scale)
-		screen.surf.blit(blit, (0,0))
+				obj.update(self.internal_surf, self.group, input, self.space, self.internal_surf)
+
+		blit = pg.transform.scale(self.internal_surf, screen.get_rect().size)
+		screen.blit(blit, (0,0))
+		screen.blit(self.Terrain.surf, (0, 0))
