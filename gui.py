@@ -98,30 +98,21 @@ class MainMenu:
         font = pg.font.SysFont("calibri", 100)
 
         render = {
-            "text": "Host",
+            "text": "Play Game",
             "color": (255, 255, 255),
             "antialias": True,
         }
         self.elem["host"] = ClassButton(
-            (200, 100), (100, 0), render, font, trigger="host"
+            (450, 100), (100, 100), render, font, trigger="host"
         )
 
         render = {
-            "text": "Join",
+            "text": "Test Character Select",
             "color": (255, 255, 255),
             "antialias": True,
         }
-        self.elem["join"] = ClassButton(
-            (200, 100), (100, 100), render, font, trigger="join"
-        )
-
-        render = {
-            "text": "Options",
-            "color": (255, 255, 255),
-            "antialias": True,
-        }
-        self.elem["options"] = ClassButton(
-            (400, 100), (100, 200), render, font, trigger="options"
+        self.elem["test"] = ClassButton(
+            (900, 100), (100, 250), render, font, trigger="test"
         )
 
         render = {
@@ -130,7 +121,7 @@ class MainMenu:
             "antialias": True,
         }
         self.elem["exit"] = ClassButton(
-            (200, 100), (100, 300), render, font, trigger="exit"
+            (200, 100), (100, 400), render, font, trigger="exit"
         )
 
     def update(self, screen, group, Input, resize):
@@ -143,11 +134,15 @@ class MainMenu:
                     # Replace self with a new game instance, passing in the screen.
                     group[0] = game.Game(screen, False)
                     return
-                elif act == "join":
-                    group[0] = game.Game(screen, True) # replace self with join menu
+                elif act == "test":
+                    group[0] = P_Select(screen)
                     return
+                elif act == "exit":
+                    pg.quit()
 
-class JoinMenu:
+
+
+class P_Select:
     def __init__(self, screen):
         # self.surf = pg.Surface(surf)
         # self.rect = self.surf.get_rect()
@@ -156,27 +151,19 @@ class JoinMenu:
         font = pg.font.SysFont("calibri", 100)
 
         render = {
-            "text": "Hi",
+            "text": "Banana",
             "color": (255, 255, 255),
             "antialias": True,
         }
-        self.elem["host"] = ClassButton(
-            (400, 300), (100, 32), render, font, trigger="host"
+        self.elem["help"] = ClassButton(
+            (400, 300), (100, 32), render, font, trigger="banana"
         )
 
-        render = {
-            "text": "Join",
-            "color": (255, 255, 255),
-            "antialias": True,
-        }
-        self.elem["join"] = ClassButton(
-            (400, 300), (100, 400), render, font, trigger="join"
-        )
+    def update(self, screen, group, Input, resize):
 
-    def update(self, screen, group, input):
-        screen.surf.fill([121, 100, 100])
+        screen.fill([121, 100, 100])
         for e in self.elem.values():
-            act = e.update(screen, input)
+            act = e.update(screen, Input)
             if act != None:
-                if act == "join":
+                if act == "test":
                     pass
