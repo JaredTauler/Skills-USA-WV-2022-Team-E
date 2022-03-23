@@ -77,13 +77,12 @@ GROUP[0] = gui.MainMenu(PLAYAREA[0])
 while True:
     # Update Playareas
     for obj in GROUP.values():
-        obj.update(SCREEN, GROUP, INPUT.update(PLAYAREA[0].surf))
+        input, resize = INPUT.update(PLAYAREA[0].surf)
+        obj.update(SCREEN, GROUP, input, resize)
 
     pg.display.update()
 
     pg.display.set_caption(str(CLOCK.get_fps()))
-    #
-    # pg.display.update()
     if pg.key.get_pressed()[32]:
         CLOCK.tick(5)
     else:

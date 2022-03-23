@@ -8,42 +8,59 @@ import pytmx
 import xml.etree.ElementTree as ET
 
 import pymunk as pm
-
+import math
 from function import *
 
-# class Bomb():
-# 	def __init__(self, parent, space):
-# 		self.body = pm.Body()
-# 		self.body.position = (100,100)
-# 		self.radius = 20
-# 		self.shape = pm.Circle(self.body, self.radius)
-# 		self.shape.density = 1
-# 		self.shape.friction = 1
-# 		self.shape.elasticity = .3
-# 		space.add(self.body, self.shape)
-# 		self.shape.collision_type = 1
-#
-# 		# self.surf = pg.image.load("bomb")
-# 		self.surf = pg.transform.scale(
-# 			pg.image.load("map/map1/bomb.png"),
-# 			(self.radius*2, self.radius*2)
-# 		)
-# 		self.surf.set_colorkey((0, 0, 0))
-#
-# 	def draw(self, screen, space):
-#
-# 		loc = SumTup(self.shape.body.position, screen.location)
-# 		x = int(loc[0]-self.radius)
-# 		y = int(loc[1] - self.radius)
-# 		screen.surf.blit(
-# 			rot_center(self.surf, self.body.angle, 0, 0)[0],
-# 			(x,y)
-# 		)
-#
-# 	def update(self, screen, group, input, space):
-# 		print(self.shape.body.position)
-# 		self.draw(screen, space)
-#
+class Throwable():
+	def __init__(self, space, size, position):
+		self.surf = None
+
+		self.body = pm.Body()
+		self.body.position = position
+		self.shape = pm.Poly.create_box(self.body, size)
+		self.shape.density = .1
+		self.shape.friction = .1
+		self.shape.elasticity = 1
+		space.add(self.body, self.shape)
+		self.shape.collision_type = 1
+
+		self.last_angle = None
+		self.last_imagecenter = None
+
+	def update(self, screen, group, input, space, surf):
+		self.angle = self.body.angle
+		if self.angle == self.last_angle:
+			image, center = self.last_imagecenter
+		else:
+			x = self.shape.body.position[0]
+			y = self.shape.body.position[1]
+			image, center = rot_center(self.surf, self.body.angle, x, y)
+
+			self.last_angle = self.angle
+			self.last_imagecenter = image, center
+
+		screen.blit(
+			image,
+			(
+				center.x +16,# center.width/2,
+				center.y +8# center.height/2
+			)
+		)
+
+
+class Banana(Throwable):
+	def __init__(self, space):
+		super().__init__(
+			space,
+			(32,16),
+			(100, 100)
+		 )
+		self.surf = pg.Surface((32,16)).convert_alpha()
+		# pg.draw.rect(self.surf, (255,0,0), (0,0, 32,16))
+		self.surf = pg.image.load("entity/banana.png")
+		# print(self.surf.get_rect())
+
+
 # class Projectile():
 # 	def __init__(self, parent, space):
 # 		self.body = pm.Body()
@@ -85,6 +102,8 @@ class Player():
 			(0, 0, 32, 32)
 		)
 
+		self.bruh = False
+
 	def update(self, screen, group, input, space, surf):
 
 		while len(self.ticklist) != 0:
@@ -108,23 +127,36 @@ class Player():
 			if pg.key.get_pressed()[key["action"]]:
 				action = True
 
-		# if action:
-		# 	group["entity"].append(Bomb(self, space))
+		if action:
+			# if not self.bruh:
+			# 	self.bruh = True
+				group["entity"].append(Banana(space))
 
 		mvspd = .2
 		self.body.velocity = SumTup((dir[0]*mvspd, dir[1]*mvspd), self.body.velocity)
 
-		# if not self.netplayer:
-		# 	# Update camera location
-		# 	screen.location = (
-		# 		-self.body.position.x + screen.get_centercenter[0],
-		# 		-self.body.position.y + screen.get_center()[1]
-		# 	)
-
-		# pg.draw.polygon(screen.surf, [255, 0, 0], verts(self.shape, screen))
 		x = int(self.shape.body.position[0])
 		y = int(self.shape.body.position[1])
-		screen.blit(self.surf, (x,y))
+		# self.surf.get_rect().topleft
+
+		def rot_center(image, angle):
+			"""rotate a Surface, maintaining position."""
+
+			loc = image.get_rect().center  # rot_image is not defined
+			rot_sprite = pygame.transform.rotate(image, angle)
+			rot_sprite.get_rect().center = loc
+			return rot_sprite
+
+		# blitRotateCenter(screen, self.surf, (x,y), self.body.angle)
+
+		# def rot_center(image, angle, x, y):
+		# 	rotated_image = pg.transform.rotate(image, angle)
+		# 	new_rect = rotated_image.get_rect(center=image.get_rect(center=(x, y)).center)
+		#
+		# 	return rotated_image, new_rect
+		screen.blit(self.surf,
+			(x,y)
+		)
 
 
 # Tiles

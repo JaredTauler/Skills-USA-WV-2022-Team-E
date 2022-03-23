@@ -57,6 +57,7 @@ class ClassButton():
 
         Return = False
         if MouseOver(self.rect):
+            print(Input)
             for i in Input.get("mouse"):
                 if i.__dict__.get("button") == 1:
                     return self.trigger
@@ -133,7 +134,7 @@ class MainMenu:
             (200, 100), (100, 300), render, font, trigger="exit"
         )
 
-    def update(self, screen, group, Input):
+    def update(self, screen, group, Input, resize):
         screen.fill([121, 100, 100])
         for e in self.elem.values():
             act = e.update(screen, Input)
