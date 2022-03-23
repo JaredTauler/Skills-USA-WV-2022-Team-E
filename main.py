@@ -58,7 +58,7 @@ class ClassEventHandle():
             if event.type in [KEYDOWN, KEYUP]:
                 key.append(event)
             elif event.type == MOUSEBUTTONDOWN:
-                key.append(event)
+                input["mouse"].append(event)
             elif event.type == QUIT:
                 quit()
             elif event.type == pg.VIDEORESIZE:

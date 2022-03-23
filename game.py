@@ -11,80 +11,113 @@ import pymunk as pm
 import math
 from function import *
 
-class Throwable():
-	def __init__(self, space, size, position):
+class Sprite():
+	def __init__(self):
 		self.surf = None
-
-		self.body = pm.Body()
-		self.body.position = position
-		self.shape = pm.Poly.create_box(self.body, size)
-		self.shape.density = .1
-		self.shape.friction = .1
-		self.shape.elasticity = 1
-		space.add(self.body, self.shape)
-		self.shape.collision_type = 1
-
 		self.last_angle = None
 		self.last_imagecenter = None
 
-	def update(self, screen, group, input, space, surf):
-		self.angle = self.body.angle
-		if self.angle == self.last_angle:
-			image, center = self.last_imagecenter
-		else:
-			x = self.shape.body.position[0]
-			y = self.shape.body.position[1]
-			image, center = rot_center(self.surf, self.body.angle, x, y)
+		self.shape = None
+		self.body= None
 
-			self.last_angle = self.angle
-			self.last_imagecenter = image, center
+		self.rotate = False
+
+	def update(self, screen, group, input, space, surf):
+		print("BRUH")
+		x = self.shape.body.position[0]
+		y = self.shape.body.position[1]
+
+		if self.rotate:
+			if self.last_angle == self.body.angle:
+				image, center = rot_center(
+					self.last_imagecenter[0],
+					x, y
+				)
+			else:
+				image, center = rot_center(
+					self.surf,
+					x, y,
+					-self.body.rotation_vector.angle_degrees
+				)
+				self.last_angle = self.body.angle
+				self.last_imagecenter = image, center
+		else:
+			image, center = rot_center(self.surf, x,y)
 
 		screen.blit(
 			image,
 			(
-				center.x +16,# center.width/2,
-				center.y +8# center.height/2
+				center.x + 16,
+				center.y + 16,
 			)
+		)
+		gfx.circle(screen,int(x),int(y),10,[255,0,0])
+
+class Throwable(Sprite):
+	def __init__(self,
+				 space, size, position, throw_rad
+	):
+		super().__init__()
+
+		self.body = pm.Body()
+		self.body.position = position
+		self.shape = pm.Poly.create_box(self.body, size)
+		self.shape.density = 1
+		self.shape.friction = .1
+		self.shape.elasticity = .5
+		space.add(self.body, self.shape)
+		self.shape.collision_type = 1
+
+		# Convert Joystick Values to an angle
+		self.body.velocity = (
+			math.sin(throw_rad) *10,
+			math.cos(throw_rad) *10
 		)
 
 
+
+
+
+		# gfx.polygon(screen, verts(self.shape, ), [0,0,255])
+
+
 class Banana(Throwable):
-	def __init__(self, space):
+	def __init__(self, space, aim_dir, spawn):
+		x = 32
+		y = 16
 		super().__init__(
 			space,
-			(32,16),
-			(100, 100)
+			(x,y),
+			spawn,
+			JoyToRad(aim_dir)
 		 )
-		self.surf = pg.Surface((32,16)).convert_alpha()
-		# pg.draw.rect(self.surf, (255,0,0), (0,0, 32,16))
+		self.surf = pg.Surface((x,y)).convert_alpha()
 		self.surf = pg.image.load("entity/banana.png")
-		# print(self.surf.get_rect())
+		self.surf = pg.transform.scale(self.surf, (x,y))
 
+class Particle(Sprite):
+	def __init__(self,
+				 space, radius, position, throw_vect2, surf
+	):
+		super().__init__()
+		self.surf = surf
+		self.body = pm.Body()
+		self.body.position = position
+		self.shape = pm.Circle(self.body, radius=10)
+		self.shape.density = 1
+		self.shape.friction = .1
+		self.shape.elasticity = .5
+		space.add(self.body, self.shape)
+		self.shape.collision_type = 1
 
-# class Projectile():
-# 	def __init__(self, parent, space):
-# 		self.body = pm.Body()
-# 		self.body.position = (100,100)
-# 		self.radius = 20
-# 		self.shape = pm.Circle(self.body, self.radius)
-# 		self.shape.density = 1
-# 		self.shape.friction = 1
-# 		self.shape.elasticity = .3
-# 		space.add(self.body, self.shape)
-# 		self.shape.collision_type = 1
-#
-# 	def update(self, screen, group, input, space):
-# 		pass
-# 		# print(self.shape.body.position)
-# 		# self.draw(screen, space)
-
+		self.body.velocity = (
+			math.sin(throw_vect2[0]) *10,
+			math.cos(throw_vect2[1]) *10
+		)
 
 class Player():
-	def __init__(self, screen, space, netplayer):
-		# net
-		self.netplayer = netplayer
-		self.ticklist = []
-
+	def __init__(self, screen, space, netplayer, InputID):
+		self.InputID = InputID
 		# pm
 		self.body = pm.Body()
 		self.body.position = (100,100)
@@ -102,58 +135,79 @@ class Player():
 			(0, 0, 32, 32)
 		)
 
+		self.aim_dir = (0,0)
+
 		self.bruh = False
 
 	def update(self, screen, group, input, space, surf):
-
-		while len(self.ticklist) != 0:
-			t = self.ticklist[0]
-			self.body.position = t["location"]
-			self.body.velocity = t["velocity"]
-			self.ticklist.pop(0)
-			# print("BRUH")
 		key = {"left": 97, "up": 119, "down": 115, "right": 100, "action": 102}
 		dir = [0,0]
 		action = False
-		if not self.netplayer:
-			if pg.key.get_pressed()[key["left"]]:
-				dir = SumTup(dir, (-1, 0))
-			if pg.key.get_pressed()[key["right"]]:
-				dir = SumTup(dir, (1, 0))
-			if pg.key.get_pressed()[key["up"]]:
-				dir = SumTup(dir, (0, -1))
-			if pg.key.get_pressed()[key["down"]]:
-				dir = SumTup(dir, (0, 1))
-			if pg.key.get_pressed()[key["action"]]:
-				action = True
+
+		controller = input["controller"][self.InputID]
+		if controller.type == "key":
+			for map in controller.order:
+				if map == "left":
+					dir = SumTup(dir, (-1, 0))
+				elif map == "right":
+					dir = SumTup(dir, (1, 0))
+				elif map == "up":
+					dir = SumTup(dir, (0, -1))
+				elif map == "down":
+					dir = SumTup(dir, (0, 1))
+				elif map == "action":
+					action = True
+		else:
+			dir = (
+				controller.joystick.get_axis(0),
+				controller.joystick.get_axis(1)
+			)
+
+
+			aim_dir = (
+				controller.joystick.get_axis(2),
+				controller.joystick.get_axis(3)
+			)
+
+			if not_deadzone(aim_dir, .5):
+				self.aim_dir = aim_dir
+			# print(aim_dir)
+			action = controller.joystick.get_button(0) == 1
+
+			# Right Trigger
+			v = RangeChange(
+				(-1,1), (0,1),
+				controller.joystick.get_axis(5)
+			)
+			RightTrigger = v if v == 0 else False
+
+		x = int(self.shape.body.position[0])
+		y = int(self.shape.body.position[1])
 
 		if action:
+			surf = pg.Surface((10,10))
+			# pg.draw.circle(surf, [255,0,0], (x,y), 10)
+			pg.draw.rect(surf, [255,0,0], self.surf.get_rect())
+			# print(surf)
+			group["entity"].append(
+				Particle(
+					space,
+					10,
+					self.body.position,
+					(1,1),
+					surf
+				)
+			)
 			# if not self.bruh:
 			# 	self.bruh = True
-				group["entity"].append(Banana(space))
+			# 	group["entity"].append(Banana(space, self.aim_dir, self.body.position))
+		# else:
+		# 	self.bruh = False
 
 		mvspd = .2
 		self.body.velocity = SumTup((dir[0]*mvspd, dir[1]*mvspd), self.body.velocity)
 
-		x = int(self.shape.body.position[0])
-		y = int(self.shape.body.position[1])
-		# self.surf.get_rect().topleft
 
-		def rot_center(image, angle):
-			"""rotate a Surface, maintaining position."""
-
-			loc = image.get_rect().center  # rot_image is not defined
-			rot_sprite = pygame.transform.rotate(image, angle)
-			rot_sprite.get_rect().center = loc
-			return rot_sprite
-
-		# blitRotateCenter(screen, self.surf, (x,y), self.body.angle)
-
-		# def rot_center(image, angle, x, y):
-		# 	rotated_image = pg.transform.rotate(image, angle)
-		# 	new_rect = rotated_image.get_rect(center=image.get_rect(center=(x, y)).center)
-		#
-		# 	return rotated_image, new_rect
 		screen.blit(self.surf,
 			(x,y)
 		)
@@ -164,10 +218,12 @@ class TileLayer():
 	def __init__(self, internal_surf_size):
 		self.tiles = []
 		self.tilemap = {}
-		self.surf = pg.Surface(internal_surf_size, pg.SRCALPHA)
+		self.clean_surf = pg.Surface(internal_surf_size, pg.SRCALPHA)
+		self.surf = self.clean_surf.copy()
 
 
 	def draw(self, screen):
+		self.surf = self.clean_surf.copy()
 		for tile in self.tiles:
 				x = int(tile.shape.body.position[0])
 				y = int(tile.shape.body.position[1])
@@ -281,9 +337,10 @@ class Game:
 		# self.group["world"].append(self.Terrain)
 
 		self.group["player"] = []
-		self.group["player"].append(Player(screen, self.space, False))
+		self.group["player"].append(Player(screen, self.space, False, 0))
+
 		self.group["entity"] = []
-		import copy
+
 	def update(self, screen, group, input, resize):
 		if resize:
 			self.Terrain.draw(screen)

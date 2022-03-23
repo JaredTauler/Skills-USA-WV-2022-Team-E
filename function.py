@@ -1,8 +1,17 @@
 import copy
 import pygame as pg
-
+import math
 def clamp(n, minn, maxn):
     return max(min(maxn, n), minn)
+
+def RadToDeg(rad):
+	return (rad / math.pi * 180) + (0 if rad > 0 else 360)
+def JoyToRad(a):
+	return math.atan2(a[0], a[1])
+def not_deadzone(a, deadzone):
+	for x in a:
+		if (-x if x < 0 else x) > deadzone:
+			return True
 
 def RangeChange(Old, New, val):
     OldRange = (Old[1] - Old[0])
@@ -61,8 +70,11 @@ def overlap(rect1, rect2):
 	)
 
 
-def rot_center(image, angle, x, y):
-	rotated_image = pg.transform.rotate(image, angle)
+def rot_center(image, x, y, angle=None):
+	if angle != None:
+		rotated_image = pg.transform.rotate(image, angle)
+	else:
+		rotated_image = image
 	new_rect = rotated_image.get_rect(center=image.get_rect(center=(x, y)).center)
 
 	return rotated_image, new_rect
