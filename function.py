@@ -67,12 +67,12 @@ def rot_center(image, angle, x, y):
 
 	return rotated_image, new_rect
 
-def verts(shape, screen):
+def verts(shape):
 	verts = []
 	for v in shape.get_vertices():
 		n = SumTup(
 			v.rotated(shape.body.angle),
-			screen.location,
+			# screen.location,
 			shape.body.position
 		)
 		verts.append(n)

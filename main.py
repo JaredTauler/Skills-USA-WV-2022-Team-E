@@ -12,6 +12,7 @@ from pygame.locals import (
     QUIT
 )
 
+pg.joystick.init()
 class ClassPlayArea():
     def __init__(self, surfsize, loc):
         self.surf = pg.Surface(surfsize)
@@ -19,45 +20,66 @@ class ClassPlayArea():
         self.location = loc
         self.zoom = 2
 
+class Joystick():
+    def __init__(self):
+        self.type = "joy"
+        self.joystick = pg.joystick.Joystick(0)
+
+
+class Keyboarder():
+    def __init__(self):
+        self.type = "key"
+        self.map = {
+            97: "left",
+            119: "up",
+            115: "down",
+            100: "right",
+            102: "action"
+        }
+        self.order = []
 
 class ClassEventHandle():
     def __init__(self):
-        self.input = {}
-        self.input["key"] = []
-        self.input["mouse"] = []
-        self.input["order"] = []
+        self.Controllers = []
+        self.Controllers.append(
+            Joystick()
+        )
 
     def update(self, surface):
+        input = {}
+        input["controller"] = self.Controllers
+        input["mouse"] = []
+        key = []
+
         resize = False
         for event in pg.event.get():
             # if event.type == pg.USEREVENT:
             #     frame += 1
             if event.type in [KEYDOWN, KEYUP]:
-                self.input["key"].append(event)
+                key.append(event)
             elif event.type == MOUSEBUTTONDOWN:
-                self.input["mouse"].append(event)
+                key.append(event)
             elif event.type == QUIT:
                 quit()
-
-        for event in self.input["key"]:
-            Key = event.key
-            State = event.type
-            # Keep track of what keys are pressed. Their order in the list is important.
-            for i, j in enumerate(self.input["order"]):
-                if j == Key:
-                    self.input["order"].pop(i)
-                self.input["order"].append(Key)
-
-            if event.type == pg.VIDEORESIZE:
+            elif event.type == pg.VIDEORESIZE:
                 old_surface_saved = surface
-                surface = pg.display.set_mode((event.w, event.h),
-                                                  pg.RESIZABLE)
+                surface = pg.display.set_mode((event.w, event.h),pg.RESIZABLE)
                 surface.blit(old_surface_saved, (0, 0))
                 del old_surface_saved
                 resize= True
+                # print("BRUH")
 
+        for event in key:
+            for controller in self.Controllers:
+                if controller.type == "joy":
+                    continue
+                mapping = controller.map.get(event.key)
+                if mapping:
+                    controller.order = [i for i in controller.order if i != mapping]
+                    if event.type == 768:
+                        controller.order.append(mapping)
 
-        return self.input, resize
+        return input, resize
 
 
 pg.init()

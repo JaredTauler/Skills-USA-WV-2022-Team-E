@@ -57,7 +57,6 @@ class ClassButton():
 
         Return = False
         if MouseOver(self.rect):
-            print(Input)
             for i in Input.get("mouse"):
                 if i.__dict__.get("button") == 1:
                     return self.trigger
