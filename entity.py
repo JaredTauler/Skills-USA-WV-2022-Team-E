@@ -5,6 +5,13 @@ import pygame as pg
 from function import *
 import pymunk as pm
 
+def Destroy(game, shape, space):
+	space.remove(shape, shape.body)
+	game.group["entity"].remove(
+		shape.body.ParentObject
+	)
+	shape.body.ParentObject = None
+
 class Sprite():
 	def __init__(self):
 		self.surf = None
@@ -72,15 +79,6 @@ class Banana(Throwable):
 
 	@staticmethod
 	def Collide_Player(arbiter, space, data):
-		# print("bruh")
-		# game = data["game"]
-		# shape = arbiter.shapes[1]
-		# space.remove(shape, shape.body)
-		# game.group["entity"].remove(
-		# 	shape.body.ParentObject
-		# )
-		# shape.body.ParentObject = None
-
 		return False
 
 	@staticmethod
@@ -92,7 +90,7 @@ class Banana(Throwable):
 			rad = lambda: random.uniform(-math.pi, math.pi)
 
 			particles = []
-			for i in range(random.randrange(30, 50)):
+			for i in range(random.randrange(10, 20)):
 				game.group["entity"].append(
 					BananaParticle(
 						game.space,
@@ -149,7 +147,6 @@ class Particle(Sprite):
 		self.body = pm.Body()
 		self.body.position = position
 		self.shape = pm.Circle(self.body, radius=radius)
-		self.shape.collision_type = 10
 		self.shape.density = .001
 		self.shape.friction = .1
 		self.shape.elasticity = .5
@@ -161,49 +158,11 @@ class Particle(Sprite):
 			math.cos(throw_rad) * 10
 		)
 
-class BananaParticle(Particle):
-	Collision_ID = 12
-
-	@staticmethod
-	def Collide_Player(arbiter, space, data):
-		game = data["game"]
-		shape = arbiter.shapes[1]
-		space.remove(shape, shape.body)
-		game.group["entity"].remove(
-			shape.body.ParentObject
-		)
-		shape.body.ParentObject = None
-
-		return False
-
-	@staticmethod
-	def Collide_Wall(arbiter, space, data):
-		return True
-
-	def __init__(self, space, position, throw_rad):
-		radius = random.randint(2, 4)
-
-		super().__init__(
-			space,
-			radius,
-			position,
-			throw_rad,
-		)
-		self.surf = pg.Surface((radius * 2, radius * 2), pg.SRCALPHA).convert_alpha()
-		self.surf.fill([255, 0, 0])
-		self.start_ticker()
-
-		self.death_countdown = 100
+		self.death_countdown = 0
 		self.alpha = 255
 
-		# Keep a reference to this Object on self.body so we can smuggle it into Collision_Callback.
-		self.body.ParentObject = self
 
-	def start_ticker(self):
-		self.ticker = 0
-		self.tick_cycle = random.randint(5, 10)
-
-	def update(self, *args):
+	def Die(self, *args):
 		game = args[0]
 		if self.body.position[0] < 0 or self.body.position[0] > game.internal_surf_size[0] or \
 				self.body.position[1] < 0 or self.body.position[1] > game.internal_surf_size[1]:
@@ -213,7 +172,7 @@ class BananaParticle(Particle):
 			)
 			self.body.ParentObject = None
 		#
-		self.ticker += 1
+
 
 		self.death_countdown -= 1
 		if self.death_countdown <= 0:
@@ -228,6 +187,51 @@ class BananaParticle(Particle):
 				except:
 					pass
 
+class BananaParticle(Particle):
+	Collision_ID = 12
+
+	@staticmethod
+	def Collide_Player(arbiter, space, data):
+		game = data["game"]
+		player = data["player"]
+		print(player)
+		shape = arbiter.shapes[1]
+		# Destroy(game, shape, space)
+
+		return False
+
+	@staticmethod
+	def Collide_Wall(arbiter, space, data):
+		return True
+
+	def __init__(self, space, position, throw_rad):
+		radius = random.randint(1, 6)
+
+		super().__init__(
+			space,
+			radius,
+			position,
+			throw_rad,
+		)
+		self.shape.collision_type = BananaParticle.Collision_ID
+		self.surf = pg.Surface((radius * 2, radius * 2), pg.SRCALPHA).convert_alpha()
+		self.surf.fill([255, 255, 0])
+		self.start_ticker()
+
+		self.death_countdown = 100
+		self.alpha = 255
+
+		# Keep a reference to this Object on self.body so we can smuggle it into Collision_Callback.
+		self.body.ParentObject = self
+
+	def start_ticker(self):
+		self.ticker = 0
+		self.tick_cycle = random.randint(5, 10)
+
+	def update(self, *args):
+		game = args[0]
+		self.Die(game)
+		self.ticker += 1
 		if self.ticker == self.tick_cycle:  # Cycle over
 			self.start_ticker()  # Restart
 			self.surf.fill(
@@ -238,7 +242,6 @@ class BananaParticle(Particle):
 					self.alpha
 				]
 			)
-
 		self.draw(game)
 
 class Fire(Particle):
@@ -246,6 +249,7 @@ class Fire(Particle):
 
 	@staticmethod
 	def Collide_Player(arbiter, space, data):
+		print("BRUH")
 		game = data["game"]
 		shape = arbiter.shapes[1]
 		space.remove(shape, shape.body)
@@ -285,28 +289,6 @@ class Fire(Particle):
 
 	def update(self, *args):
 		game = args[0]
-		if self.body.position[0] < 0 or self.body.position[0] > game.internal_surf_size[0] or \
-				self.body.position[1] < 0 or self.body.position[1] > game.internal_surf_size[1]:
-			game.space.remove(self.shape, self.body)
-			game.group["entity"].remove(
-				self.body.ParentObject
-			)
-			self.body.ParentObject = None
-		#
-		self.ticker += 1
-
-		self.death_countdown -= 1
-		if self.death_countdown <= 0:
-			self.alpha -= 1
-			if self.alpha <= 155:
-				try:
-					game.space.remove(self.shape, self.body)
-					game.group["entity"].remove(
-						self.body.ParentObject
-					)
-					self.body.ParentObject = None
-				except:
-					pass
 
 		if self.ticker == self.tick_cycle:  # Cycle over
 			self.start_ticker()  # Restart
@@ -319,6 +301,7 @@ class Fire(Particle):
 				]
 			)
 
+		self.Die(game)
 		self.draw(game)
 
 
