@@ -5,7 +5,7 @@ import pygame.draw
 import pymunk as pm
 
 class Player():
-	def __init__(self, game, PlayerID):
+	def __init__(self, game, PlayerID, controller):
 		self.InputID = PlayerID
 		self.collision_ID = PlayerID  # Might have to be changed in future
 
@@ -32,16 +32,24 @@ class Player():
 
 		self.bruh = False
 
+		self.controller = controller
+
+		self.damage = []
+
+		self.rumble_tick = 0
+		self.rumbling = False
+
 	def update(self, *args):
 		# print(self.body.position)
 		game = args[0]
 		# print(len(game.space.bodies))
 		input = args[1]
 
+		# Get input
 		dir = [0, 0]
 		action = False
-
-		controller = input["controller"][self.InputID]
+		controller = self.controller
+		# Keyboard
 		if controller.type == "key":
 			for map in controller.order:
 				if map == "left":
@@ -54,6 +62,7 @@ class Player():
 					dir = SumTup(dir, (0, 1))
 				elif map == "action":
 					action = True
+		# Joystick
 		else:
 			dir = (
 				controller.joystick.get_axis(0),
@@ -76,6 +85,29 @@ class Player():
 				controller.joystick.get_axis(5)
 			)
 			RightTrigger = v if v == 0 else False
+
+		# Calculate damage
+		if len(self.damage):
+			while len(self.damage): # while there are items in list
+				self.rumble_tick += self.damage[0]
+				self.damage.pop(0)
+
+			self.rumble_tick = round(self.rumble_tick)
+			self.rumble_tick =  clamp(self.rumble_tick,0,60)
+
+		print(self.rumble_tick)
+		if self.rumble_tick <= 0:
+			if self.rumbling:
+				controller.joystick.stop_rumble()
+				self.rumbling = False
+		else:
+			self.rumble_tick -= 1
+			if not self.rumbling:
+				controller.joystick.rumble(100,100,0)
+				self.rumbling = True
+
+
+
 
 		x = int(self.shape.body.position[0])
 		y = int(self.shape.body.position[1])
@@ -175,7 +207,7 @@ class Game:
 					y += 1
 					x = 0
 
-	def __init__(self, screen, Forclient):
+	def __init__(self, screen, input):
 		self.screen = screen
 		self.surf = None
 		self.zoom_scale = .5
@@ -211,7 +243,7 @@ class Game:
 
 		self.group["player"] = []
 
-		self.group["player"].append(Player(self, 0))
+		self.group["player"].append(Player(self, 0, input["controller"][0]))
 
 		self.group["entity"] = []
 

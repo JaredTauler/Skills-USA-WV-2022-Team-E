@@ -83,12 +83,16 @@ class Banana(Throwable):
 
 	@staticmethod
 	def Collide_Wall(arbiter, space, data):
-		if random.choices([True, False], weights = (1,4))[0]:
+		# if random.choices([True, False], weights = (1,4))[0]:
+		if True:
 			game = data["game"]
 			shape = arbiter.shapes[1]
-			print(shape.angle)
-			rad = lambda: math.radians(180)#random.uniform(-math.pi, math.pi)
-
+			# print(shape.body.rotation_vector.angle_degrees)
+			v = shape.body.rotation_vector.angle_degrees
+			rad = lambda: math.radians(
+				( 180 if random.choice([True,False]) else 0) +
+				((v+90) + random.randint(-1,1))
+			)
 
 			particles = []
 			for i in range(random.randrange(10, 20)):
@@ -96,8 +100,8 @@ class Banana(Throwable):
 					BananaParticle(
 						game.space,
 						shape.body.position,
-						math.atan2(rad(), rad()),
-						velocity=10
+						rad(),
+						velocity=random.randint(5,15)
 					)
 				)
 
@@ -179,15 +183,22 @@ class Particle(Sprite):
 		self.death_countdown -= 1
 		if self.death_countdown <= 0:
 			self.alpha -= 1
-			if self.alpha <= 100:
+			if self.alpha <= 200:
+				self.alpha -= 7
 				try:
-					game.space.remove(self.shape, self.body)
-					game.group["entity"].remove(
-						self.body.ParentObject
-					)
-					self.body.ParentObject = None
-				except:
-					pass
+					self.body.collision_type = 0
+				except: pass
+				if self.alpha <= 0:
+					print("BRUH")
+					try:
+						game.space.remove(self.shape, self.body)
+						game.group["entity"].remove(
+							self.body.ParentObject
+						)
+						self.body.ParentObject = None
+					except: pass
+		if self.alpha < 0:
+			self.alpha = 0
 
 class BananaParticle(Particle):
 	Collision_ID = 12
@@ -198,8 +209,9 @@ class BananaParticle(Particle):
 		player = data["player"]
 		shape = arbiter.shapes[1]
 
-		player.health -= arbiter.total_ke * (shape.body.mass * 10)
-		print(player.health)
+		player.damage.append(
+			arbiter.total_ke * (shape.body.mass * 10)
+		)
 
 		Destroy(game, shape, space)
 
@@ -220,6 +232,7 @@ class BananaParticle(Particle):
 			velocity=velocity
 		)
 		self.shape.collision_type = BananaParticle.Collision_ID
+		self.shape.density = .001
 		self.surf = pg.Surface((radius * 2, radius * 2), pg.SRCALPHA).convert_alpha()
 		self.surf.fill([255, 255, 0])
 		self.start_ticker()

@@ -132,7 +132,7 @@ class MainMenu:
                 # Host game.
                 if act == "host":
                     # Replace self with a new game instance, passing in the screen.
-                    group[0] = game.Game(screen, False)
+                    group[0] = game.Game(screen, Input)
                     return
                 elif act == "test":
                     group[0] = P_Select(screen, self)

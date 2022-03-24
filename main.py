@@ -42,7 +42,7 @@ class ClassEventHandle():
     def __init__(self):
         self.Controllers = []
         self.Controllers.append(
-            Keyboarder()
+            Joystick()
         )
 
     def update(self, surface):
