@@ -91,12 +91,12 @@ class Banana(Throwable):
 
 class Particle(Sprite):
 	def __init__(self,
-				 space, radius, position, throw_vect2
+				 space, radius, position, throw_rad
 	):
 		super().__init__()
 
 		self.body = pm.Body()
-		self.body.position = (400,400)#position
+		self.body.position = (800, 800)#position
 		self.shape = pm.Circle(self.body, radius=radius)
 		self.shape.collision_type = 10
 		self.shape.density = .001
@@ -106,8 +106,8 @@ class Particle(Sprite):
 		# self.shape.collision_type = 1
 
 		self.body.velocity = (
-			math.sin(throw_vect2[0]) *10,
-			math.cos(throw_vect2[1]) *10
+			math.sin(throw_rad) *10,
+			math.cos(throw_rad) *10
 		)
 
 
@@ -122,13 +122,11 @@ class Fire(Particle):
 		game.group["entity"].remove(
 			shape.body.ParentObject
 		)
-		import gc
-		print(gc.get_referrers(arbiter.shapes[1].body.ParentObject))
+		shape.body.ParentObject = None
 
 		return False
 
 	def __init__(self, space, position, throw_vect2, group):
-		# super().__init__(space, radius, position, throw_vect2)
 		radius = random.randint(2, 4)
 
 		super().__init__(
@@ -141,8 +139,7 @@ class Fire(Particle):
 		self.surf.fill([255,0,0])
 		self.start_ticker()
 
-		self.death_tick = 0
-		self.start_death = 500
+		self.death_countdown = 500
 		self.alpha = 255
 
 		# Keep a reference to this Object on self.body so we can smuggle it into Collision_Callback.
@@ -154,26 +151,40 @@ class Fire(Particle):
 
 	def update(self, *args):
 		game = args[0]
+		if self.body.position[0] < 0 or self.body.position[0] > game.internal_surf_size[0] or \
+		self.body.position[1] < 0 or self.body.position[1] > game.internal_surf_size[1]:
+			game.space.remove(self.shape, self.body)
+			game.group["entity"].remove(
+				self.body.ParentObject
+			)
+			self.body.ParentObject = None
+
+
 		self.ticker += 1
 
-		if self.ticker == self.tick_cycle:
-			self.start_ticker()
+		self.death_countdown -= 1
+		if self.death_countdown <= 0:
+			self.alpha -= 1
+			if self.alpha <= 100:
+				game.space.remove(self.shape, self.body)
+				game.group["entity"].remove(
+					self.body.ParentObject
+				)
+				self.body.ParentObject = None
+
+
+		if self.ticker == self.tick_cycle:# Cycle over
+			self.start_ticker() # Restart
 			self.surf.fill(
 				[
-					random.randint(150,255),
+					random.randint(150, 255),
 					random.randint(0, 100),
 					0,
 					self.alpha
-				 ]
+				]
 			)
 
-		# if self.death_tick == self.start_death:
-		# 	self.alpha -= 1
-		# 	if self.alpha == 100:
-		# 		game.space.remove(self.shape, self.body)
-		# 		return True
-		# else:
-		# 	self.death_tick += 1
+
 
 		self.draw(game)
 
@@ -207,7 +218,9 @@ class Player():
 		self.bruh = False
 
 	def update(self, *args):
+		# print(self.body.position)
 		game = args[0]
+		# print(len(game.space.bodies))
 		input = args[1]
 
 		dir = [0,0]
@@ -261,7 +274,7 @@ class Player():
 					Fire(
 						game.space,
 						self.body.position,
-						aim_dir,
+						JoyToRad(self.aim_dir),
 						game.group
 					)
 				)
