@@ -84,7 +84,7 @@ class ClassEventHandle():
 
 pg.init()
 
-SCREEN = pg.display.set_mode((1200, 800),pg.RESIZABLE, vsync=0)
+SCREEN = pg.display.set_mode((1200, 800),pg.RESIZABLE, pg.OPENGLBLIT, vsync=0)
 CLOCK = pg.time.Clock()
 
 GROUP = {}
@@ -102,7 +102,7 @@ while True:
         input, resize = INPUT.update(PLAYAREA[0].surf)
         obj.update(SCREEN, GROUP, input, resize)
 
-    pg.display.update()
+    pg.display.flip()
 
     pg.display.set_caption(str(CLOCK.get_fps()))
     if pg.key.get_pressed()[32]:
