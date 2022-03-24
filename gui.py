@@ -135,7 +135,7 @@ class MainMenu:
                     group[0] = game.Game(screen, False)
                     return
                 elif act == "test":
-                    group[0] = P_Select(screen)
+                    group[0] = P_Select(screen, self)
                     return
                 elif act == "exit":
                     pg.quit()
@@ -143,9 +143,10 @@ class MainMenu:
 
 
 class P_Select:
-    def __init__(self, screen):
+    def __init__(self, screen, back):
         # self.surf = pg.Surface(surf)
         # self.rect = self.surf.get_rect()
+        self.back = back
         self.elem = {}
 
         font = pg.font.SysFont("calibri", 100)
@@ -155,8 +156,44 @@ class P_Select:
             "color": (255, 255, 255),
             "antialias": True,
         }
-        self.elem["help"] = ClassButton(
-            (400, 300), (100, 32), render, font, trigger="banana"
+        self.elem["banana"] = ClassButton(
+            (400, 150), (100, 32), render, font, trigger="banana"
+        )
+
+        render = {
+            "text": "Red",
+            "color": (255, 255, 255),
+            "antialias": True,
+        }
+        self.elem["red"] = ClassButton(
+            (300, 150), (450, 200), render, font, trigger="red"
+        )
+
+        render = {
+            "text": "Green",
+            "color": (255, 255, 255),
+            "antialias": True,
+        }
+        self.elem["green"] = ClassButton(
+            (300, 150), (100, 200), render, font, trigger="green"
+        )
+
+        render = {
+            "text": "Blue",
+            "color": (255, 255, 255),
+            "antialias": True,
+        }
+        self.elem["blue"] = ClassButton(
+            (300, 150), (800, 200), render, font, trigger="blue"
+        )
+
+        render = {
+            "text": "Back",
+            "color": (255, 255, 255),
+            "antialias": True,
+        }
+        self.elem["back"] = ClassButton(
+            (300, 150), (100, 600), render, font, trigger="back"
         )
 
     def update(self, screen, group, Input, resize):
@@ -167,3 +204,5 @@ class P_Select:
             if act != None:
                 if act == "test":
                     pass
+                elif act == "back":
+                    group[0] = self.back
