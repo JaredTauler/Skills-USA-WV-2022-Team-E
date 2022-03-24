@@ -1,217 +1,32 @@
-import json
-import random
-
+from function import *
+import entity
 import pygame
 import pygame.draw
-import pygame.gfxdraw as gfx
-# import game
-import pymunk
-import pytmx
-import xml.etree.ElementTree as ET
-
 import pymunk as pm
-import math
-from function import *
-
-class Sprite():
-	def __init__(self):
-		self.surf = None
-		self.last_angle = None
-		self.last_imagecenter = None
-
-		self.shape = None
-		self.body= None
-
-		self.rotate = False
-
-	def draw(self, game):
-		x = self.shape.body.position[0]
-		y = self.shape.body.position[1]
-
-		if self.rotate:
-			if self.last_angle == self.body.angle:
-				image, center = rot_center(
-					self.last_imagecenter[0],
-					x, y
-				)
-			else:
-				image, center = rot_center(
-					self.surf,
-					x, y,
-					-self.body.rotation_vector.angle_degrees
-				)
-				self.last_angle = self.body.angle
-				self.last_imagecenter = image, center
-		else:
-			image, center = rot_center(self.surf, x,y)
-			center = self.surf.get_rect(center=self.surf.get_rect(center=(x, y)).center)
-
-		game.internal_surf.blit(
-			self.surf,
-			(
-				center.x + 16,
-				center.y + 16,
-			)
-		)
-
-class Throwable(Sprite):
-	def __init__(self,
-				 space, size, position, throw_rad
-	):
-		super().__init__()
-
-		self.body = pm.Body()
-		self.body.position = position
-		self.shape = pm.Poly.create_box(self.body, size)
-		self.shape.density = 1
-		self.shape.friction = .1
-		self.shape.elasticity = .5
-		space.add(self.body, self.shape)
-		self.shape.collision_type = 1
-
-		# Convert Joystick Values to an angle
-		self.body.velocity = (
-			math.sin(throw_rad) *10,
-			math.cos(throw_rad) *10
-		)
-
-class Banana(Throwable):
-	def __init__(self, space, aim_dir, spawn):
-		x = 32
-		y = 16
-		super().__init__(
-			space,
-			(x,y),
-			spawn,
-			JoyToRad(aim_dir)
-		 )
-		self.surf = pg.Surface((x,y)).convert_alpha()
-		self.surf = pg.image.load("entity/banana.png")
-		self.surf = pg.transform.scale(self.surf, (x,y))
-
-class Particle(Sprite):
-	def __init__(self,
-				 space, radius, position, throw_rad
-	):
-		super().__init__()
-
-		self.body = pm.Body()
-		self.body.position = (800, 800)#position
-		self.shape = pm.Circle(self.body, radius=radius)
-		self.shape.collision_type = 10
-		self.shape.density = .001
-		self.shape.friction = .1
-		self.shape.elasticity = .5
-		space.add(self.body, self.shape)
-		# self.shape.collision_type = 1
-
-		self.body.velocity = (
-			math.sin(throw_rad) *10,
-			math.cos(throw_rad) *10
-		)
-
-
-class Fire(Particle):
-	Collision_ID = 10
-
-	@staticmethod
-	def Collision_Callback(arbiter, space, data):
-		game = data["game"]
-		shape = arbiter.shapes[1]
-		space.remove(shape, shape.body)
-		game.group["entity"].remove(
-			shape.body.ParentObject
-		)
-		shape.body.ParentObject = None
-
-		return False
-
-	def __init__(self, space, position, throw_vect2, group):
-		radius = random.randint(2, 4)
-
-		super().__init__(
-			space,
-			radius,
-			position,
-			throw_vect2,
-		)
-		self.surf = pg.Surface((radius * 2, radius * 2), pg.SRCALPHA).convert_alpha()
-		self.surf.fill([255,0,0])
-		self.start_ticker()
-
-		self.death_countdown = 500
-		self.alpha = 255
-
-		# Keep a reference to this Object on self.body so we can smuggle it into Collision_Callback.
-		self.body.ParentObject = self
-
-	def start_ticker(self):
-		self.ticker = 0
-		self.tick_cycle = random.randint(5, 10)
-
-	def update(self, *args):
-		game = args[0]
-		if self.body.position[0] < 0 or self.body.position[0] > game.internal_surf_size[0] or \
-		self.body.position[1] < 0 or self.body.position[1] > game.internal_surf_size[1]:
-			game.space.remove(self.shape, self.body)
-			game.group["entity"].remove(
-				self.body.ParentObject
-			)
-			self.body.ParentObject = None
-
-
-		self.ticker += 1
-
-		self.death_countdown -= 1
-		if self.death_countdown <= 0:
-			self.alpha -= 1
-			if self.alpha <= 100:
-				game.space.remove(self.shape, self.body)
-				game.group["entity"].remove(
-					self.body.ParentObject
-				)
-				self.body.ParentObject = None
-
-
-		if self.ticker == self.tick_cycle:# Cycle over
-			self.start_ticker() # Restart
-			self.surf.fill(
-				[
-					random.randint(150, 255),
-					random.randint(0, 100),
-					0,
-					self.alpha
-				]
-			)
-
-
-
-		self.draw(game)
 
 class Player():
 	def __init__(self, game, PlayerID):
 		self.InputID = PlayerID
-		self.collision_ID = PlayerID # Might have to be changed in future
+		self.collision_ID = PlayerID  # Might have to be changed in future
 
 		# pm
 		self.body = pm.Body()
-		self.body.position = (100,100)
-		self.shape = pm.Poly.create_box(self.body, (32,32))
+		self.body.position = (100, 100)
+		self.shape = pm.Poly.create_box(self.body, (32, 32))
 		self.shape.collision_type = self.collision_ID
 		self.shape.density = 1
 		self.shape.friction = 1
 		self.shape.elasticity = .3
 		game.space.add(self.body, self.shape)
 
-
-		self.surf = pg.Surface((32,32))
+		self.surf = pg.Surface((32, 32))
 		pygame.draw.rect(
 			self.surf,
 			[255, 255, 255],
 			(0, 0, 32, 32)
 		)
 
-		self.aim_dir = (0,0)
+		self.aim_dir = (0, 0)
 
 		self.health = 100
 
@@ -223,7 +38,7 @@ class Player():
 		# print(len(game.space.bodies))
 		input = args[1]
 
-		dir = [0,0]
+		dir = [0, 0]
 		action = False
 
 		controller = input["controller"][self.InputID]
@@ -245,7 +60,6 @@ class Player():
 				controller.joystick.get_axis(1)
 			)
 
-
 			aim_dir = (
 				controller.joystick.get_axis(2),
 				controller.joystick.get_axis(3)
@@ -258,7 +72,7 @@ class Player():
 
 			# Right Trigger
 			v = RangeChange(
-				(-1,1), (0,1),
+				(-1, 1), (0, 1),
 				controller.joystick.get_axis(5)
 			)
 			RightTrigger = v if v == 0 else False
@@ -268,27 +82,26 @@ class Player():
 
 		if action:
 
-			# if not self.bruh:
-			# 	self.bruh = True
-				game.group["entity"].append(
-					Fire(
-						game.space,
-						self.body.position,
-						JoyToRad(self.aim_dir),
-						game.group
-					)
-				)
-				# group["entity"].append(Banana(space, self.aim_dir, self.body.position))
+			if not self.bruh:
+				self.bruh = True
+				# 	game.group["entity"].append(
+				# 		Fire(
+				# 			game.space,
+				# 			self.body.position,
+				# 			JoyToRad(self.aim_dir),
+				# 			game.group
+				# 		)
+				# 	)
+				game.group["entity"].append(entity.Banana(game, self.aim_dir, self.body.position))
 		else:
 			self.bruh = False
 
 		mvspd = .2
-		self.body.velocity = SumTup((dir[0]*mvspd, dir[1]*mvspd), self.body.velocity)
-
+		self.body.velocity = SumTup((dir[0] * mvspd, dir[1] * mvspd), self.body.velocity)
 
 		game.internal_surf.blit(self.surf,
-			(x,y)
-		)
+								(x, y)
+								)
 
 
 # Tiles
@@ -299,33 +112,36 @@ class TileLayer():
 		self.clean_surf = pg.Surface(internal_surf_size, pg.HWSURFACE)
 		self.surf = self.clean_surf.copy()
 
-
 	def draw(self, screen, bg):
 		self.surf = self.clean_surf.copy()
-		self.surf.blit(bg, (0,0))
+		self.surf.blit(bg, (0, 0))
 		for tile in self.tiles:
-				x = int(tile.shape.body.position[0])
-				y = int(tile.shape.body.position[1])
+			x = int(tile.shape.body.position[0])
+			y = int(tile.shape.body.position[1])
 
-				self.surf.blit(
-					self.tilemap[tile.textureid],
-					(x, y, 32, 32)
-				)
+			self.surf.blit(
+				self.tilemap[tile.textureid],
+				(x, y, 32, 32)
+			)
 		self.surf = pg.transform.scale(self.surf, screen.get_rect().size)
 
+
 class Tile(pg.sprite.Sprite):
+	Collision_ID = 9
+
 	def __init__(self, size, loc, space, textureid):
 		pg.sprite.Sprite.__init__(self)
 		# textures make game slow. idk why.
-		self.textureid = textureid # Remember texture ID rather than texture
+		self.textureid = textureid  # Remember texture ID rather than texture
 		# pm
 		self.body = pm.Body(body_type=pm.Body.STATIC)
 		self.body.position = loc
 		self.shape = pm.Poly.create_box(self.body, size)
 		self.shape.density = 1
 		self.shape.elasticity = 1
+		self.shape.collision_type = 9
 		space.add(self.body, self.shape)
-		self.shape.collision_type = 1
+
 
 class Game:
 
@@ -351,7 +167,7 @@ class Game:
 			y = 0
 			for gid in js["layers"][0]["data"]:
 				if gid != 0:
-					gid = gid -1
+					gid = gid - 1
 					TL.tiles.append(Tile((n, n), (x * n, y * n), space, gid))
 
 				x += 1
@@ -365,22 +181,20 @@ class Game:
 		self.zoom_scale = .5
 
 		n = 32
-		ratio = (16,9)
+		ratio = (16, 9)
 		tiles = 5
-		func = lambda ratio: (ratio*tiles)*n
+		func = lambda ratio: (ratio * tiles) * n
 		self.internal_surf_size = (
 			func(ratio[0])
-			,func(ratio[1])
+			, func(ratio[1])
 		)
 
 		self.internal_surf = pg.Surface(self.internal_surf_size, pg.HWSURFACE, ).convert_alpha()
-		self.internal_rect = self.internal_surf.get_rect(center = (screen.get_width()/2, screen.get_height()/2))
+		self.internal_rect = self.internal_surf.get_rect(center=(screen.get_width() / 2, screen.get_height() / 2))
 		self.internal_surf_size_vector = pg.math.Vector2(self.internal_surf_size)
 
 		self.space = pm.Space()  # PyMunk simulation
 		self.space.gravity = (0, .1)
-
-
 
 		dir = "map/map1/"
 		img = pg.image.load(dir + "rainy.png").convert()
@@ -390,10 +204,7 @@ class Game:
 		self.LoadMap(self.Terrain, self.space)
 		self.Terrain.draw(screen, self.bg)
 
-
-
 		self.group = {}
-
 
 		self.group["world"] = []
 		# self.group["world"].append(self.Terrain)
@@ -406,7 +217,7 @@ class Game:
 
 		# Collision IDs:
 		for c in [
-			Fire,
+			entity.Fire, entity.Banana, entity.BananaParticle
 		]:
 			for player in self.group["player"]:
 				handler = self.space.add_collision_handler(
@@ -414,19 +225,26 @@ class Game:
 					c.Collision_ID
 				)
 				handler.data["game"] = self
-				handler.begin = c.Collision_Callback
+				handler.begin = c.Collide_Player
+
+			# Collision with tiles
+			handler = self.space.add_collision_handler(
+				Tile.Collision_ID,
+				c.Collision_ID
+			)
+			handler.data["game"] = self
+			handler.begin = c.Collide_Wall
 
 	def update(self, screen, group, input, resize):
 		if resize:
 			self.Terrain.draw(screen, self.bg)
-		self.space.step(1) # Step pymunk sim
+		self.space.step(1)  # Step pymunk sim
 
 		# Update entities
-		self.internal_surf.fill([0,0,0,0])
+		self.internal_surf.fill([0, 0, 0, 0])
 		for e in self.group.values():
 			for obj in e:
 				obj.update(self, input, e)
 		blit = pg.transform.scale(self.internal_surf, screen.get_rect().size)
 		screen.blit(self.Terrain.surf, (0, 0))
-		screen.blit(blit, (0,0))
-
+		screen.blit(blit, (0, 0))
