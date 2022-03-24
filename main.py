@@ -42,7 +42,7 @@ class ClassEventHandle():
     def __init__(self):
         self.Controllers = []
         self.Controllers.append(
-            Joystick()
+            Keyboarder()
         )
 
     def update(self, surface):
@@ -89,7 +89,6 @@ CLOCK = pg.time.Clock()
 
 GROUP = {}
 
-
 PLAYAREA = [ClassPlayArea((1200, 800), (0,0))]
 
 INPUT = ClassEventHandle()
@@ -97,10 +96,8 @@ INPUT = ClassEventHandle()
 # Initial GUI menu.
 GROUP[0] = gui.MainMenu(PLAYAREA[0])
 while True:
-    # Update Playareas
-    for obj in GROUP.values():
-        input, resize = INPUT.update(PLAYAREA[0].surf)
-        obj.update(SCREEN, GROUP, input, resize)
+    input, resize = INPUT.update(PLAYAREA[0].surf)
+    GROUP[0].update(SCREEN, GROUP, input, resize)
 
     pg.display.flip()
 
