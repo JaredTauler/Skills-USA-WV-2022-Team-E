@@ -108,6 +108,6 @@ while True:
     if pg.key.get_pressed()[32]:
         CLOCK.tick(5)
     else:
-        CLOCK.tick(2000)
+        CLOCK.tick(60)
         pass
 

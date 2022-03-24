@@ -226,7 +226,7 @@ class Game:
 				)
 				handler.data["player"] = player
 				handler.data["game"] = self
-				handler.begin = c.Collide_Player
+				handler.post_solve = c.Collide_Player
 
 			# Collision with tiles
 			handler = self.space.add_collision_handler(
