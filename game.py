@@ -224,6 +224,7 @@ class Game:
 					player.collision_ID,
 					c.Collision_ID
 				)
+				handler.data["player"] = player
 				handler.data["game"] = self
 				handler.begin = c.Collide_Player
 
