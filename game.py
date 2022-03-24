@@ -1,9 +1,11 @@
 import json
+import random
 
 import pygame
 import pygame.draw
 import pygame.gfxdraw as gfx
 # import game
+import pymunk
 import pytmx
 import xml.etree.ElementTree as ET
 
@@ -22,8 +24,7 @@ class Sprite():
 
 		self.rotate = False
 
-	def update(self, screen, group, input, space, surf):
-		print("BRUH")
+	def draw(self, game):
 		x = self.shape.body.position[0]
 		y = self.shape.body.position[1]
 
@@ -43,15 +44,15 @@ class Sprite():
 				self.last_imagecenter = image, center
 		else:
 			image, center = rot_center(self.surf, x,y)
+			center = self.surf.get_rect(center=self.surf.get_rect(center=(x, y)).center)
 
-		screen.blit(
-			image,
+		game.internal_surf.blit(
+			self.surf,
 			(
 				center.x + 16,
 				center.y + 16,
 			)
 		)
-		gfx.circle(screen,int(x),int(y),10,[255,0,0])
 
 class Throwable(Sprite):
 	def __init__(self,
@@ -74,13 +75,6 @@ class Throwable(Sprite):
 			math.cos(throw_rad) *10
 		)
 
-
-
-
-
-		# gfx.polygon(screen, verts(self.shape, ), [0,0,255])
-
-
 class Banana(Throwable):
 	def __init__(self, space, aim_dir, spawn):
 		x = 32
@@ -97,36 +91,107 @@ class Banana(Throwable):
 
 class Particle(Sprite):
 	def __init__(self,
-				 space, radius, position, throw_vect2, surf
+				 space, radius, position, throw_vect2
 	):
 		super().__init__()
-		self.surf = surf
+
 		self.body = pm.Body()
-		self.body.position = position
-		self.shape = pm.Circle(self.body, radius=10)
-		self.shape.density = 1
+		self.body.position = (400,400)#position
+		self.shape = pm.Circle(self.body, radius=radius)
+		self.shape.collision_type = 10
+		self.shape.density = .001
 		self.shape.friction = .1
 		self.shape.elasticity = .5
 		space.add(self.body, self.shape)
-		self.shape.collision_type = 1
+		# self.shape.collision_type = 1
 
 		self.body.velocity = (
 			math.sin(throw_vect2[0]) *10,
 			math.cos(throw_vect2[1]) *10
 		)
 
+
+class Fire(Particle):
+	Collision_ID = 10
+
+	@staticmethod
+	def Collision_Callback(arbiter, space, data):
+		game = data["game"]
+		shape = arbiter.shapes[1]
+		space.remove(shape, shape.body)
+		game.group["entity"].remove(
+			shape.body.ParentObject
+		)
+		import gc
+		print(gc.get_referrers(arbiter.shapes[1].body.ParentObject))
+
+		return False
+
+	def __init__(self, space, position, throw_vect2, group):
+		# super().__init__(space, radius, position, throw_vect2)
+		radius = random.randint(2, 4)
+
+		super().__init__(
+			space,
+			radius,
+			position,
+			throw_vect2,
+		)
+		self.surf = pg.Surface((radius * 2, radius * 2), pg.SRCALPHA).convert_alpha()
+		self.surf.fill([255,0,0])
+		self.start_ticker()
+
+		self.death_tick = 0
+		self.start_death = 500
+		self.alpha = 255
+
+		# Keep a reference to this Object on self.body so we can smuggle it into Collision_Callback.
+		self.body.ParentObject = self
+
+	def start_ticker(self):
+		self.ticker = 0
+		self.tick_cycle = random.randint(5, 10)
+
+	def update(self, *args):
+		game = args[0]
+		self.ticker += 1
+
+		if self.ticker == self.tick_cycle:
+			self.start_ticker()
+			self.surf.fill(
+				[
+					random.randint(150,255),
+					random.randint(0, 100),
+					0,
+					self.alpha
+				 ]
+			)
+
+		# if self.death_tick == self.start_death:
+		# 	self.alpha -= 1
+		# 	if self.alpha == 100:
+		# 		game.space.remove(self.shape, self.body)
+		# 		return True
+		# else:
+		# 	self.death_tick += 1
+
+		self.draw(game)
+
 class Player():
-	def __init__(self, screen, space, netplayer, InputID):
-		self.InputID = InputID
+	def __init__(self, game, PlayerID):
+		self.InputID = PlayerID
+		self.collision_ID = PlayerID # Might have to be changed in future
+
 		# pm
 		self.body = pm.Body()
 		self.body.position = (100,100)
 		self.shape = pm.Poly.create_box(self.body, (32,32))
+		self.shape.collision_type = self.collision_ID
 		self.shape.density = 1
 		self.shape.friction = 1
 		self.shape.elasticity = .3
-		space.add(self.body, self.shape)
-		self.shape.collision_type = 1
+		game.space.add(self.body, self.shape)
+
 
 		self.surf = pg.Surface((32,32))
 		pygame.draw.rect(
@@ -137,10 +202,14 @@ class Player():
 
 		self.aim_dir = (0,0)
 
+		self.health = 100
+
 		self.bruh = False
 
-	def update(self, screen, group, input, space, surf):
-		key = {"left": 97, "up": 119, "down": 115, "right": 100, "action": 102}
+	def update(self, *args):
+		game = args[0]
+		input = args[1]
+
 		dir = [0,0]
 		action = False
 
@@ -185,30 +254,26 @@ class Player():
 		y = int(self.shape.body.position[1])
 
 		if action:
-			surf = pg.Surface((10,10))
-			# pg.draw.circle(surf, [255,0,0], (x,y), 10)
-			pg.draw.rect(surf, [255,0,0], self.surf.get_rect())
-			# print(surf)
-			group["entity"].append(
-				Particle(
-					space,
-					10,
-					self.body.position,
-					(1,1),
-					surf
-				)
-			)
+
 			# if not self.bruh:
 			# 	self.bruh = True
-			# 	group["entity"].append(Banana(space, self.aim_dir, self.body.position))
-		# else:
-		# 	self.bruh = False
+				game.group["entity"].append(
+					Fire(
+						game.space,
+						self.body.position,
+						aim_dir,
+						game.group
+					)
+				)
+				# group["entity"].append(Banana(space, self.aim_dir, self.body.position))
+		else:
+			self.bruh = False
 
 		mvspd = .2
 		self.body.velocity = SumTup((dir[0]*mvspd, dir[1]*mvspd), self.body.velocity)
 
 
-		screen.blit(self.surf,
+		game.internal_surf.blit(self.surf,
 			(x,y)
 		)
 
@@ -218,12 +283,13 @@ class TileLayer():
 	def __init__(self, internal_surf_size):
 		self.tiles = []
 		self.tilemap = {}
-		self.clean_surf = pg.Surface(internal_surf_size, pg.SRCALPHA)
+		self.clean_surf = pg.Surface(internal_surf_size, pg.HWSURFACE)
 		self.surf = self.clean_surf.copy()
 
 
-	def draw(self, screen):
+	def draw(self, screen, bg):
 		self.surf = self.clean_surf.copy()
+		self.surf.blit(bg, (0,0))
 		for tile in self.tiles:
 				x = int(tile.shape.body.position[0])
 				y = int(tile.shape.body.position[1])
@@ -233,11 +299,6 @@ class TileLayer():
 					(x, y, 32, 32)
 				)
 		self.surf = pg.transform.scale(self.surf, screen.get_rect().size)
-
-	# def update(self, screen, group, input, space, surf):
-	# 	pass
-	# 	# self.draw(screen, space, surf)
-
 
 class Tile(pg.sprite.Sprite):
 	def __init__(self, size, loc, space, textureid):
@@ -252,24 +313,6 @@ class Tile(pg.sprite.Sprite):
 		self.shape.elasticity = 1
 		space.add(self.body, self.shape)
 		self.shape.collision_type = 1
-
-
-
-
-class BG:
-	def __init__(self, bg):
-		dir = "map/map1/"
-		img = pg.image.load(dir + bg).convert()
-
-		self.surf = pg.transform.scale(img, (1800,1800))
-
-	def draw(self, screen, space):
-		x = int(screen.location[0] * .3)
-		y = int(screen.location[1] * .3)
-		screen.surf.blit(self.surf, (x,y))
-
-	def update(self, screen, group, input, space):
-		self.draw(screen, space)
 
 class Game:
 
@@ -317,41 +360,60 @@ class Game:
 			,func(ratio[1])
 		)
 
-		self.internal_surf = pg.Surface(self.internal_surf_size, pygame.SRCALPHA)
+		self.internal_surf = pg.Surface(self.internal_surf_size, pg.HWSURFACE, ).convert_alpha()
 		self.internal_rect = self.internal_surf.get_rect(center = (screen.get_width()/2, screen.get_height()/2))
 		self.internal_surf_size_vector = pg.math.Vector2(self.internal_surf_size)
 
 		self.space = pm.Space()  # PyMunk simulation
 		self.space.gravity = (0, .1)
 
+
+
+		dir = "map/map1/"
+		img = pg.image.load(dir + "rainy.png").convert()
+		self.bg = pg.transform.scale(img, self.internal_surf_size)
+
 		self.Terrain = TileLayer(self.internal_surf_size)
 		self.LoadMap(self.Terrain, self.space)
-		self.Terrain.draw(screen)
-		# bg = BG("bg.png")
+		self.Terrain.draw(screen, self.bg)
+
+
 
 		self.group = {}
 
 
 		self.group["world"] = []
-		# self.group["world"].append(bg)
 		# self.group["world"].append(self.Terrain)
 
 		self.group["player"] = []
-		self.group["player"].append(Player(screen, self.space, False, 0))
+
+		self.group["player"].append(Player(self, 0))
 
 		self.group["entity"] = []
 
+		# Collision IDs:
+		for c in [
+			Fire,
+		]:
+			for player in self.group["player"]:
+				handler = self.space.add_collision_handler(
+					player.collision_ID,
+					c.Collision_ID
+				)
+				handler.data["game"] = self
+				handler.begin = c.Collision_Callback
+
 	def update(self, screen, group, input, resize):
 		if resize:
-			self.Terrain.draw(screen)
+			self.Terrain.draw(screen, self.bg)
 		self.space.step(1) # Step pymunk sim
 
 		# Update entities
-		self.internal_surf.fill([0,0,0])
+		self.internal_surf.fill([0,0,0,0])
 		for e in self.group.values():
 			for obj in e:
-				obj.update(self.internal_surf, self.group, input, self.space, self.internal_surf)
-
+				obj.update(self, input, e)
 		blit = pg.transform.scale(self.internal_surf, screen.get_rect().size)
-		screen.blit(blit, (0,0))
 		screen.blit(self.Terrain.surf, (0, 0))
+		screen.blit(blit, (0,0))
+
