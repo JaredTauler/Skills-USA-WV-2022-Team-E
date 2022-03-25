@@ -10,11 +10,13 @@ from function import *
 import math
 import game
 
+
 def SurfCenter(s1, s2):
     return (
         s1.get_rect().center[0] - s2.get_rect().center[0],
         s1.get_rect().center[1] - s2.get_rect().center[1]
     )
+
 
 def MouseOver(r):
     m = pg.mouse.get_pos()
@@ -23,6 +25,7 @@ def MouseOver(r):
         and
         m[1] in range(r.y, r.height + r.y)
     )
+
 
 # Made by Shane M.D.
 class ClassButton():
@@ -87,7 +90,7 @@ class MainMenu:
 
         # Events are called using the update of the Button now
         if self.elem["startcase"].update(screen,Input):
-            flow["state"] = game.Game(screen, Input, flow)
+            flow["state"] = P_Select(screen, self)
 
         if self.elem["quit"].update(screen,Input):
             pg.quit()
@@ -104,18 +107,25 @@ class P_Select:
         self.back = back
         self.elem = {}
 
-        self.elem["p1"] = ClassButton(32, 50, 691, 145, './gui/p2nr.png', './gui/p2r.png',"Joystick")
+        self.elem["p1"] = ClassButton(50, 170, 250, 350, './gui/p1nr.png', './gui/p1r.png',"Joystick")
+        self.elem["p2"] = ClassButton(335, 170, 250, 350, './gui/p2nr.png', './gui/p2r.png', "Joystick")
+        self.elem["p3"] = ClassButton(615, 170, 250, 350, './gui/p3nr.png', './gui/p3r.png', "Joystick")
+        self.elem["p4"] = ClassButton(900, 170, 250, 350, './gui/p4nr.png', './gui/p4r.png', "Joystick")
 
-    def update(self, screen, flow, Input, resize):
+        self.elem["startgame"] = ClassButton(450, 550, 300, 150, './gui/start.png', './gui/starthover.png', "Button")
 
+    def update(self, screen, group, Input, resize):
+        if self.elem["startgame"].update(screen,Input):
+            group[0] = game.Game(screen, Input)
         screen.fill([121, 100, 100])
         for e in self.elem.values():
             act = e.update(screen, Input)
             if act != None:
                 if act == "test":
-                    pass
+                    group[0] = game.Game(screen, Input)
                 elif act == "back":
                     flow["state"] = self.back
+
 
 class Win:
     def __init__(self, screen, back):
