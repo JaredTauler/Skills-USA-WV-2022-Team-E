@@ -50,7 +50,7 @@ class Player(entity.Sprite):
 		# Load animation
 		img = pg.image.load("gui/pointer.png")
 		self.pointer_surfs = strip_from_sheet(img, (0,0), (16,16))
-		self.pointer_position = None
+		self.pointer_position = (0,0)
 
 		self.action_cooldown = 0
 		self.action_cooldown_max = 100
@@ -180,14 +180,7 @@ class Player(entity.Sprite):
 		if action:
 			if self.action_cooldown <= 0:
 				self.action_cooldown = self.action_cooldown_max
-				# 	game.group["entity"].append(
-				# 		Fire(
-				# 			game.space,
-				# 			self.body.position,
-				# 			JoyToRad(self.aim_dir),
-				# 			game.group
-				# 		)
-				# 	)
+				print(self.pointer_position)
 				game.group["entity"].append(
 					entity.Banana(
 						game,
@@ -300,7 +293,7 @@ class Game:
 							x = 0
 
 
-	def __init__(self, screen, input, Flow):
+	def __init__(self, Flow, input, screen):
 		self.PlayerSpawnPoints = []
 		self.screen = screen
 		self.surf = None
@@ -316,6 +309,7 @@ class Game:
 		)
 
 		self.internal_surf = pg.Surface(self.internal_surf_size, pg.HWSURFACE, ).convert_alpha()
+		print(screen)
 		self.internal_rect = self.internal_surf.get_rect(center=(screen.get_width() / 2, screen.get_height() / 2))
 		self.internal_surf_size_vector = pg.math.Vector2(self.internal_surf_size)
 
@@ -338,8 +332,9 @@ class Game:
 		self.group["player"] = []
 
 		for i, j in enumerate(Flow["seat"]):
-			self.group["player"].append(Player(self, j, i))
-			break
+			if Flow["seat"][i].ready:
+				self.group["player"].append(Player(self, j, i))
+
 
 		self.group["entity"] = []
 

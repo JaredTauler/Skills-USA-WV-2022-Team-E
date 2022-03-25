@@ -91,12 +91,13 @@ class Banana(Throwable):
 
 	@staticmethod
 	def Collide_Player(arbiter, space, data):
-		return False
+		Banana.Collide_Wall(
+			arbiter, space, data
+		)
 
 	@staticmethod
 	def Collide_Wall(arbiter, space, data):
-		# if random.choices([True, False], weights = (1,4))[0]: # Chance to not detonate
-		if True:
+		if random.choices([True, False], weights = (1,4))[0]: # Chance to not detonate
 			game = data["game"]
 			shape = arbiter.shapes[1]
 

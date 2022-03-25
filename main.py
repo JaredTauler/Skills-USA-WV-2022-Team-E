@@ -24,12 +24,9 @@ class Seat():
     def __init__(self, color):
         self.color = color
         self.joystick = None
+        self.ready = 0
 
 class ClassEventHandle():
-    def __init__(self):
-        pass
-        # self.Controllers = []
-
     def update(self, surface):
         input = {}
         # input["joystick"] = self.Controllers
@@ -51,6 +48,22 @@ class ClassEventHandle():
                 del old_surface_saved
                 resize= True
 
+            elif event.type == pg.JOYDEVICEREMOVED:
+                for seat in FLOW["seat"]:
+                    if seat.joystick:
+                        if seat.joystick.get_instance_id() == event.instance_id:
+                            seat.joystick = None
+                            break
+
+            elif event.type == pg.JOYDEVICEADDED:
+                for seat in FLOW["seat"]:
+                    if seat.joystick is None:
+                        seat.joystick = pg.joystick.Joystick(
+                            event.device_index
+                        )
+                        break
+
+
         return input, resize
 
 
@@ -66,14 +79,19 @@ FLOW["seat"].append(Seat([0,255,0]))
 FLOW["seat"].append(Seat([0,0,255]))
 FLOW["seat"].append(Seat([255,255,0]))
 
-FLOW["seat"][0].joystick = pg.joystick.Joystick(0)
+# Assign controllers to seats.
+for i, j in zip(
+        FLOW["seat"],
+        range(pg.joystick.get_count())
+):
+    i.joystick = pg.joystick.Joystick(j)
 
 PLAYAREA = [ClassPlayArea((1200, 800), (0,0))]
 
 INPUT = ClassEventHandle()
 
 # Initial GUI menu.
-FLOW["state"] = gui.MainMenu(PLAYAREA[0])
+FLOW["state"] = gui.MainMenu(PLAYAREA[0], FLOW)
 while True:
     input, resize = INPUT.update(PLAYAREA[0].surf)
     FLOW["state"].update(SCREEN, FLOW, input, resize)
