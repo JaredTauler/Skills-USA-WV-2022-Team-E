@@ -118,7 +118,10 @@ class P_Select:
         if self.elem["startgame"].update(screen,Input):
             flow[0] = game.Game(screen, Input)
         screen.fill([121, 100, 100])
-        for e in self.elem.values():
+
+        # Need to go to the ButtonClass and make the Image switch when the A button is pressed
+
+        for e in self.elem.values()     # hahah error to get your attention via comment
             act = e.update(screen, Input)
             if act != None:
                 if act == "test":
@@ -134,14 +137,15 @@ class Win:
         self.back = back
         self.elem = {}
 
-        self.elem[''] = ClassButton()
+        self.elem['gameover'] = ClassButton(0,0,1200,800,'./gui/gameover.png','./gui/gameover.png','Button')
+
+        self.elem['p1win'] = ClassButton(0, 0, 1200, 800, './gui/p1win.png', './gui/p1win.png', 'Button')
+        self.elem['p2win'] = ClassButton(0, 0, 1200, 800, './gui/p2win.png', './gui/p2win.png', 'Button')
+        self.elem['p3win'] = ClassButton(0, 0, 1200, 800, './gui/p3win.png', './gui/p3win.png', 'Button')
+        self.elem['p4win'] = ClassButton(0, 0, 1200, 800, './gui/p4win.png', './gui/p4win.png', 'Button')
 
     def update(self, screen, flow, Input, resize):
 
-        for e in self.elem.values():
-            act = e.update(screen, Input)
-            if act != None:
-                if act == "test":
-                    pass
-                elif act == "back":
-                    flow["state"] = self.back
+        # This is going to be broken but that's fine
+        if player1_win == True:
+            self.elem['p1win'].update()
