@@ -349,7 +349,6 @@ class Game:
 		self.group["player"] = []
 
 		self.group["player"].append(Player(self, 1, input["controller"][0]))
-		self.group["player"].append(Player(self, 2, input["controller"][1]))
 
 		self.group["entity"] = []
 

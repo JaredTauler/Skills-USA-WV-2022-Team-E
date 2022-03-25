@@ -44,9 +44,7 @@ class ClassEventHandle():
         self.Controllers.append(
             Joystick(0)
         )
-        self.Controllers.append(
-            Joystick(1)
-        )
+
 
     def update(self, surface):
         input = {}

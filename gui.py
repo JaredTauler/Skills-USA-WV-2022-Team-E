@@ -94,11 +94,6 @@ class MainMenu:
 
         for e in self.elem.values():
             act = e.update(screen, Input)
-            if act != None:
-                # Host game.
-                if act == "test":
-                    group[0] = P_Select(screen, self)       # I need this so I'm keeping this here for a sec
-                    return
 
 
 
