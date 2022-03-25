@@ -101,15 +101,15 @@ class Win():
 
         c = [255,255,255]
         self.lines = [
-            [font.render(f"Court adjourned!", True, c), 1],
-            [player.surf, 1],
-            [font.render(f"{winner_seat.name} has won this trial!", True, c), 1],
-            [font.render(f"Throughout due process they:", True, c), 1],
-            [font.render(f"Blew themselves up {self.winner.suicide} times.", True, c), 1],
-            [font.render(f"Press A to return to the main menu.", True, c), 1],
+            [font.render(f"Court adjourned!", True, c), 50],
+            [player.surf, 50],
+            [font.render(f"{winner_seat.name} has won this trial!", True, c), 50],
+            [font.render(f"Throughout due process they:", True, c), 50],
+            [font.render(f"Blew themselves up {self.winner.suicide} times.", True, c), 50],
         ]
+        self.push_button = font.render(f"Press A to return to the main menu.", True, c), 70,
 
-
+        self.no_input = 150
 
     def update(self, screen, flow, Input, resize):
         self.surf.fill([0,0,0,0])
@@ -117,9 +117,19 @@ class Win():
         for i, line in enumerate(self.lines):
             line, dist = line
             # height = line.get_height() + (20* (i + 1))
-            height = (50* i) + line.get_height()
+            height = (dist * i) + line.get_height()
             print(height)
             self.surf.blit(line, line.get_rect(center=(screen.get_width()/2, height)))
+
+        if self.no_input <= 0:
+            if self.push_button not in self.lines:
+                self.lines.append(self.push_button)
+            for seat in flow["seat"]:
+                if seat.joystick:
+                    if seat.joystick.get_button(0):
+                        flow["state"] = MainMenu(screen ,flow)
+        else:
+            self.no_input -= 1
         screen.blit(
             self.surf,
             (0,0)

@@ -76,8 +76,27 @@ class Player(entity.Sprite):
 				self.joystick.rumble(0, 100, 0)
 			self.rumbling = True
 
+	def die(self, game):
+		try:
+			game.space.remove(self.body)
+			self.dead = True
+			self.respawn = 500
+			# Death particles
+			for i in range(random.randint(30, 60)):
+				game.group["entity"].append(
+					entity.PlayerDeathParticle(
+						game.space,
+						self.body.position,
+						self.color
+					)
+				)
+		except:
+			pass
+
 	def update(self, *args):
 		game = args[0]
+		if entity.OutOfBounds(self.shape, game):
+			self.die(game)
 		if self.dead: # Dead
 			self.RumbleLogic()
 			self.respawn -= 1
@@ -155,18 +174,7 @@ class Player(entity.Sprite):
 						self.suicide += 1
 					else:
 						author.kills.append(self.PlayerID)
-					game.space.remove(self.body)
-					self.dead = True
-					self.respawn = 500
-					# Death particles
-					for i in range(random.randint(30, 60)):
-						game.group["entity"].append(
-							entity.PlayerDeathParticle(
-								game.space,
-								self.body.position,
-								self.color
-							)
-						)
+					self.die(game)
 				self.damage.pop(0)
 
 			self.rumble_tick = round(self.rumble_tick)
@@ -313,7 +321,7 @@ class Game:
 		self.internal_surf_size_vector = pg.math.Vector2(self.internal_surf_size)
 
 		self.space = pm.Space()  # PyMunk simulation
-		self.space.gravity = (0, 0)
+		self.space.gravity = (0, .1)
 
 		dir = "map/map1/"
 		img = pg.image.load(dir + "rainy.png").convert()
@@ -331,7 +339,7 @@ class Game:
 		self.group["player"] = []
 
 		for i, j in enumerate(Flow["seat"]):
-			if Flow["seat"][i].ready:
+			if Flow["seat"][i].ready == 1:
 				self.group["player"].append(Player(self, j, i))
 
 
@@ -375,9 +383,12 @@ class Game:
 				obj.update(self, input, e, )
 
 		for player in self.group["player"]:
-			if len(player.kills) == 1:
+			if len(player.kills) == 10:
+				for player in self.group["player"]:
+					player.stop_rumble()
 				flow["state"] = gui.Win(flow, screen, player) # Handoff gameflow to win GUI
 
+		# blit = pg.transform.scale(self.internal_surf, (1280,720))
 		blit = pg.transform.scale(self.internal_surf, screen.get_rect().size)
 
 		screen.blit(self.bg, (0,0))

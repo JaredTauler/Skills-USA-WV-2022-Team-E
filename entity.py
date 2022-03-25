@@ -15,6 +15,12 @@ def Destroy(game, shape, space):
 	except:
 		pass
 
+def OutOfBounds(shape, game):
+	body = shape.body
+	return body.position[0] < 0 or body.position[0] > game.internal_surf_size[0] or \
+			body.position[1] < 0 or body.position[1] > game.internal_surf_size[1]
+
+
 class Sprite():
 	def __init__(self):
 		self.surf = None
@@ -92,12 +98,22 @@ class Banana(Throwable):
 	@staticmethod
 	def Collide_Player(arbiter, space, data):
 		Banana.Collide_Wall(
-			arbiter, space, data
+			arbiter, space, data, True
 		)
 
 	@staticmethod
-	def Collide_Wall(arbiter, space, data):
-		if random.choices([True, False], weights = (1,4))[0]: # Chance to not detonate
+	def Collide_Wall(
+			arbiter,
+			space,
+			data,
+			will_detonate=False
+	):
+		if will_detonate is not False:
+			detonate = random.choices([True, False], weights = (1,4))[0] # Chance to not detonate
+		else:
+			detonate = True
+		if detonate:
+
 			game = data["game"]
 			shape = arbiter.shapes[1]
 
@@ -153,7 +169,7 @@ class Banana(Throwable):
 			game.space,
 			(x, y),
 			spawn,
-			JoyToRad(aim_dir)
+			JoyToRad(aim_dir),
 		)
 		self.shape.collision_type = Banana.Collision_ID
 		self.body.ParentObject = self
@@ -217,12 +233,8 @@ class Particle(Sprite):
 
 	def Die(self, *args):
 		game = args[0]
-		if self.body.position[0] < 0 or self.body.position[0] > game.internal_surf_size[0] or \
-				self.body.position[1] < 0 or self.body.position[1] > game.internal_surf_size[1]:
+		if OutOfBounds(self.shape, game):
 			Destroy(game, self.shape, game.space)
-
-
-		# print(self.body.velocity)
 
 		if self.fading:
 			self.alpha -= 1
