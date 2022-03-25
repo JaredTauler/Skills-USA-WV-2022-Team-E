@@ -83,11 +83,11 @@ class MainMenu:
         self.elem["startcase"] = ClassButton(32,430,691,145,'./gui/startcase.png','./gui/startcasehover.png','Button')
         self.elem["quit"] = ClassButton(32,600,500,138,'./gui/quit.png','./gui/quithover.png','Button')
 
-    def update(self, screen, group, Input, resize):
+    def update(self, screen, flow, Input, resize):
 
         # Events are called using the update of the Button now
         if self.elem["startcase"].update(screen,Input):
-            group[0] = game.Game(screen, Input)
+            flow["state"] = game.Game(screen, Input, flow)
 
         if self.elem["quit"].update(screen,Input):
             pg.quit()
@@ -106,7 +106,7 @@ class P_Select:
 
         self.elem["p1"] = ClassButton(32, 50, 691, 145, './gui/p2nr.png', './gui/p2r.png',"Joystick")
 
-    def update(self, screen, group, Input, resize):
+    def update(self, screen, flow, Input, resize):
 
         screen.fill([121, 100, 100])
         for e in self.elem.values():
@@ -115,7 +115,7 @@ class P_Select:
                 if act == "test":
                     pass
                 elif act == "back":
-                    group[0] = self.back
+                    flow["state"] = self.back
 
 class Win:
     def __init__(self, screen, back):

@@ -20,42 +20,24 @@ class ClassPlayArea():
         self.location = loc
         self.zoom = 2
 
-class Joystick():
-    def __init__(self, id):
-        self.type = "joy"
-        self.joystick = pg.joystick.Joystick(id)
-
-
-class Keyboarder():
-    def __init__(self):
-        self.type = "key"
-        self.map = {
-            97: "left",
-            119: "up",
-            115: "down",
-            100: "right",
-            102: "action"
-        }
-        self.order = []
+class Seat():
+    def __init__(self, color):
+        self.color = color
+        self.joystick = None
 
 class ClassEventHandle():
     def __init__(self):
-        self.Controllers = []
-        self.Controllers.append(
-            Joystick(0)
-        )
-
+        pass
+        # self.Controllers = []
 
     def update(self, surface):
         input = {}
-        input["controller"] = self.Controllers
+        # input["joystick"] = self.Controllers
         input["mouse"] = []
         key = []
 
         resize = False
         for event in pg.event.get():
-            # if event.type == pg.USEREVENT:
-            #     frame += 1
             if event.type in [KEYDOWN, KEYUP]:
                 key.append(event)
             elif event.type == MOUSEBUTTONDOWN:
@@ -68,17 +50,6 @@ class ClassEventHandle():
                 surface.blit(old_surface_saved, (0, 0))
                 del old_surface_saved
                 resize= True
-                # print("BRUH")
-
-        for event in key:
-            for controller in self.Controllers:
-                if controller.type == "joy":
-                    continue
-                mapping = controller.map.get(event.key)
-                if mapping:
-                    controller.order = [i for i in controller.order if i != mapping]
-                    if event.type == 768:
-                        controller.order.append(mapping)
 
         return input, resize
 
@@ -88,23 +59,30 @@ pg.init()
 SCREEN = pg.display.set_mode((1200, 800),pg.RESIZABLE, pg.OPENGLBLIT, vsync=0)
 CLOCK = pg.time.Clock()
 
-GROUP = {}
+FLOW = {}
+FLOW["seat"] = []
+FLOW["seat"].append(Seat([255,0,0]))
+FLOW["seat"].append(Seat([0,255,0]))
+FLOW["seat"].append(Seat([0,0,255]))
+FLOW["seat"].append(Seat([255,255,0]))
+
+FLOW["seat"][0].joystick = pg.joystick.Joystick(0)
 
 PLAYAREA = [ClassPlayArea((1200, 800), (0,0))]
 
 INPUT = ClassEventHandle()
 
 # Initial GUI menu.
-GROUP[0] = gui.MainMenu(PLAYAREA[0])
+FLOW["state"] = gui.MainMenu(PLAYAREA[0])
 while True:
     input, resize = INPUT.update(PLAYAREA[0].surf)
-    GROUP[0].update(SCREEN, GROUP, input, resize)
+    FLOW["state"].update(SCREEN, FLOW, input, resize)
     pg.display.update()
 
     pg.display.set_caption(str(CLOCK.get_fps()))
     if pg.key.get_pressed()[32]:
         CLOCK.tick(5)
     else:
-        CLOCK.tick(2000)
+        CLOCK.tick(60)
         pass
 

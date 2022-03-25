@@ -7,11 +7,11 @@ import pygame.draw
 import pymunk as pm
 
 class Player(entity.Sprite):
-	def __init__(self, game, PlayerID, controller):
+	def __init__(self, game, Seat, id):
 		super().__init__()
-		self.PlayerID = PlayerID
-		self.InputID = PlayerID
-		self.collision_ID = PlayerID  # Might have to be changed in future
+		self.PlayerID = id
+		self.InputID = id
+		self.collision_ID = id + 1  # Collision_type = 0 is disasterous
 
 		# pm
 		self.body = pm.Body()
@@ -23,8 +23,9 @@ class Player(entity.Sprite):
 		self.shape.elasticity = .1
 		game.space.add(self.body, self.shape)
 
+		self.color = Seat.color
 		self.surf = pg.Surface((32, 32)).convert_alpha()
-		self.surf.fill([255,255,255])
+		self.surf.fill(self.color)
 
 		self.aim_dir = (0, 0)
 
@@ -32,7 +33,7 @@ class Player(entity.Sprite):
 
 		self.bruh = False
 
-		self.controller = controller
+		self.joystick = Seat.joystick
 
 		self.damage = []
 
@@ -42,7 +43,7 @@ class Player(entity.Sprite):
 
 		self.dead = False
 		self.respawn = 0
-		self.color = [255,255,255]
+
 		self.kills = []
 		self.suicide = 0
 
@@ -55,26 +56,31 @@ class Player(entity.Sprite):
 		self.action_cooldown = 0
 		self.action_cooldown_max = 100
 
-	def stop_rumble(self, controller):
+	# Rumble logic
+	def RumbleLogic(self):
+		if self.rumble_tick <= 0:
+			self.stop_rumble()
+		else:
+			self.rumble_tick -= 1
+			self.start_rumble()
+
+	def stop_rumble(self):
 		if self.rumbling:
-			controller.joystick.stop_rumble()
+			self.joystick.stop_rumble()
 			self.rumbling = False
 
-	def start_rumble(self, controller):
+	def start_rumble(self):
 		if not self.rumbling:
-			controller.joystick.rumble(100, 100, 0)
+			if self.last_health < 20:
+				self.joystick.rumble(100, 0, 0)
+			else:
+				self.joystick.rumble(0, 100, 0)
 			self.rumbling = True
 
 	def update(self, *args):
-		# print(self.health)
-		# print(self.body.position)
 		game = args[0]
-		# print(len(game.space.bodies))
-		input = args[1]
-
-		controller = self.controller
 		if self.dead: # Dead
-			self.stop_rumble(controller)
+			self.RumbleLogic()
 			self.respawn -= 1
 
 			# Respawn logic
@@ -102,54 +108,45 @@ class Player(entity.Sprite):
 							best_dist = dist
 							best_point = point
 
-				self.body.position = best_point["position"]
+				if best_point != None: # Should happen under normal circumstances
+					self.body.position = best_point["position"]
+				self.rumble_tick = 5
 
 			return
 
 		# Get input
 		dir = [0, 0]
 		action = False
-		# Keyboard
-		if controller.type == "key":
-			for map in controller.order:
-				if map == "left":
-					dir = SumTup(dir, (-1, 0))
-				elif map == "right":
-					dir = SumTup(dir, (1, 0))
-				elif map == "up":
-					dir = SumTup(dir, (0, -1))
-				elif map == "down":
-					dir = SumTup(dir, (0, 1))
-				elif map == "action":
-					action = True
 		# Joystick
-		else:
-			dir = (
-				controller.joystick.get_axis(0),
-				controller.joystick.get_axis(1)
-			)
+		dir = (
+			self.joystick.get_axis(0),
+			self.joystick.get_axis(1)
+		)
 
-			aim_dir = (
-				controller.joystick.get_axis(2),
-				controller.joystick.get_axis(3)
-			)
+		aim_dir = (
+			self.joystick.get_axis(2),
+			self.joystick.get_axis(3)
+		)
 
-			if not_deadzone(aim_dir, .5):
-				self.aim_dir = aim_dir
-			# print(aim_dir)
-			action = controller.joystick.get_button(0) == 1
+		if not_deadzone(aim_dir, .5):
+			self.aim_dir = aim_dir
+		# print(aim_dir)
+		action = self.joystick.get_button(0) == 1
 
-			# Right Trigger
-			v = RangeChange(
-				(-1, 1), (0, 1),
-				controller.joystick.get_axis(5)
-			)
-			RightTrigger = v if v == 0 else False
+		# Right Trigger
+		v = RangeChange(
+			(-1, 1), (0, 1),
+			self.joystick.get_axis(5)
+		)
+		RightTrigger = v if v == 0 else False
+
+		# if self.body.velocity.y > 0: if
 
 		# Calculate damage
 		if len(self.damage):
+			self.last_health = self.health
 			while len(self.damage): # while there are items in list
-				self.rumble_tick += self.damage[0]["damage"]
+				self.rumble_tick += self.damage[0]["damage"] * 2
 				self.health -= self.damage[0]["damage"]
 
 				# On death
@@ -174,16 +171,9 @@ class Player(entity.Sprite):
 				self.damage.pop(0)
 
 			self.rumble_tick = round(self.rumble_tick)
-			self.rumble_tick =  clamp(self.rumble_tick,0,60)
+			self.rumble_tick = clamp(self.rumble_tick,3,30)
 
-
-
-		# Rumble logic
-		if self.rumble_tick <= 0:
-			self.stop_rumble(controller)
-		else:
-			self.rumble_tick -= 1
-			self.start_rumble(controller)
+		self.RumbleLogic()
 
 		x = int(self.shape.body.position[0])
 		y = int(self.shape.body.position[1])
@@ -311,7 +301,7 @@ class Game:
 							x = 0
 
 
-	def __init__(self, screen, input):
+	def __init__(self, screen, input, Flow):
 		self.PlayerSpawnPoints = []
 		self.screen = screen
 		self.surf = None
@@ -348,7 +338,9 @@ class Game:
 
 		self.group["player"] = []
 
-		self.group["player"].append(Player(self, 1, input["controller"][0]))
+		for i, j in enumerate(Flow["seat"]):
+			self.group["player"].append(Player(self, j, i))
+			break
 
 		self.group["entity"] = []
 
@@ -387,10 +379,11 @@ class Game:
 		self.internal_surf.fill([0,0,0,0])
 		for e in self.group.values():
 			for obj in e:
-				obj.update(self, input, e)
+				obj.update(self, input, e, )
 
 		for player in self.group["player"]:
-			print(len(player.kills))
+			pass
+			# print(len(player.kills))
 			# kills = 0
 			# print(len([i if i != player.PlayerID else None for i in player.kills]))
 
