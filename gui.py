@@ -1,3 +1,8 @@
+###############################
+#
+# Edited by Shane M.D.
+#
+###############################
 import pygame
 import pygame as pg
 import pygame.font as pgfont
@@ -19,74 +24,49 @@ def MouseOver(r):
         m[1] in range(r.y, r.height + r.y)
     )
 
-
+# Made by Shane M.D.
 class ClassButton():
-    def __init__(self, surf, rect, render, font, trigger):
-        self.surf = pg.Surface(surf, pygame.SRCALPHA)
-        self.rect = self.surf.get_rect()
-        self.rect.x = rect[0]
-        self.rect.y = rect[1]
+    def __init__(self,x,y,width,height,image,imagehover,button_type):       # Button type has to be a string value of "Button" or "Joystick"
+        self.width = width
+        self.height = height
+        self.img1path = pg.image.load(image)
+        self.img2path = pg.image.load(imagehover)
+        self.image = pg.transform.scale(self.img1path,(self.width,self.height)).convert_alpha()
+        self.image2 = pg.transform.scale(self.img2path,(self.width,self.height)).convert_alpha()
+        self.rect = self.image.get_rect()
+        self.rect.topleft = (x,y)
+        self.clicked = False
+        self.curimg = self.image
 
-        self.trigger = trigger
+        self.Type = button_type
 
-        self.color = [255, 0, 0]
-        self.fade = 10
-        self.fadeindex = 0
-        self.render=render
-        self.font =font
+    def update(self,surface,Input):
+        action = False
+        pos = pygame.mouse.get_pos()
+        if self.Type == 'Button':
+            if self.rect.collidepoint(pos):
+                self.curimg = self.image2
 
+                if pygame.mouse.get_pressed()[0] == 1 and self.clicked == False:
+                    self.clicked = True
+                    action = True
+                    self.curimg = self.image
 
-    def update(self, screen, Input):
-        def FadeMath(color):
-            if self.fadeindex != 0:
-                h = RangeChange(
-                    (0, self.fade),
-                    (0, 1),
-                    self.fadeindex
-                )
+                if pygame.mouse.get_pressed()[0] == 0:
+                    self.clicked = False
 
-                a = 1  # max
-                b = 1
-                k = 0  # min
-                mod = ((a * math.sin((h / b))) + k)
-                return clamp(
-                    255 - (mod * 100),
-                    0, 255
-                )
-            return color
+            if not self.rect.collidepoint(pos) and self.clicked == False:
+                self.curimg = self.image
 
-        Return = False
-        if MouseOver(self.rect):
-            for i in Input.get("mouse"):
-                if i.__dict__.get("button") == 1:
-                    return self.trigger
-            if self.fadeindex < self.fade:
-                self.fadeindex += 1
+        # This is to get the A/B input of the controller to Ready Up
+        elif self.Type == 'Joystick':
+            pass
 
         else:
-            if self.fadeindex > 0:
-                self.fadeindex -= 1
+            print('Button_Type not Defined/Recognized.')
 
-        pg.draw.rect(
-            self.surf,
-            [FadeMath(255), 0, 0],
-            self.surf.get_rect(),
-            border_radius=20
-        )
-
-        font = pg.font.SysFont("calibri", 18)
-
-        text = self.font.render(
-                self.render["text"],
-                self.render["antialias"],
-                self.render["color"],
-            )
-
-        self.surf.blit(
-            text,
-            (SurfCenter(self.surf, text))
-        )
-        screen.blit(self.surf, self.rect)
+        surface.blit(self.curimg,(self.rect.x, self.rect.y))
+        return action
 
 
 class MainMenu:
@@ -97,48 +77,29 @@ class MainMenu:
 
         font = pg.font.SysFont("calibri", 100)
 
-        render = {
-            "text": "Play Game",
-            "color": (255, 255, 255),
-            "antialias": True,
-        }
-        self.elem["host"] = ClassButton(
-            (450, 100), (100, 100), render, font, trigger="host"
-        )
+        self.elem["background"] = ClassButton(0,0,1200,800,'./gui/background.png','./gui/background.png','Button')
+        self.elem["logo"] = ClassButton(32, 50, 653, 329, './gui/logo.png', './gui/logo.png', 'Button')
 
-        render = {
-            "text": "Test Character Select",
-            "color": (255, 255, 255),
-            "antialias": True,
-        }
-        self.elem["test"] = ClassButton(
-            (900, 100), (100, 250), render, font, trigger="test"
-        )
-
-        render = {
-            "text": "Exit",
-            "color": (255, 255, 255),
-            "antialias": True,
-        }
-        self.elem["exit"] = ClassButton(
-            (200, 100), (100, 400), render, font, trigger="exit"
-        )
+        self.elem["startcase"] = ClassButton(32,430,691,145,'./gui/startcase.png','./gui/startcasehover.png','Button')
+        self.elem["quit"] = ClassButton(32,600,500,138,'./gui/quit.png','./gui/quithover.png','Button')
 
     def update(self, screen, group, Input, resize):
-        screen.fill([121, 100, 100])
+
+        # Events are called using the update of the Button now
+        if self.elem["startcase"].update(screen,Input):
+            group[0] = game.Game(screen, Input)
+
+        if self.elem["quit"].update(screen,Input):
+            pg.quit()
+
         for e in self.elem.values():
             act = e.update(screen, Input)
             if act != None:
                 # Host game.
-                if act == "host":
-                    # Replace self with a new game instance, passing in the screen.
-                    group[0] = game.Game(screen, Input)
+                if act == "test":
+                    group[0] = P_Select(screen, self)       # I need this so I'm keeping this here for a sec
                     return
-                elif act == "test":
-                    group[0] = P_Select(screen, self)
-                    return
-                elif act == "exit":
-                    pg.quit()
+
 
 
 class P_Select:
@@ -148,56 +109,30 @@ class P_Select:
         self.back = back
         self.elem = {}
 
-        font = pg.font.SysFont("calibri", 100)
-
-        render = {
-            "text": "Banana",
-            "color": (255, 255, 255),
-            "antialias": True,
-        }
-        self.elem["banana"] = ClassButton(
-            (400, 150), (100, 32), render, font, trigger="banana"
-        )
-
-        render = {
-            "text": "Red",
-            "color": (255, 255, 255),
-            "antialias": True,
-        }
-        self.elem["red"] = ClassButton(
-            (300, 150), (450, 200), render, font, trigger="red"
-        )
-
-        render = {
-            "text": "Green",
-            "color": (255, 255, 255),
-            "antialias": True,
-        }
-        self.elem["green"] = ClassButton(
-            (300, 150), (100, 200), render, font, trigger="green"
-        )
-
-        render = {
-            "text": "Blue",
-            "color": (255, 255, 255),
-            "antialias": True,
-        }
-        self.elem["blue"] = ClassButton(
-            (300, 150), (800, 200), render, font, trigger="blue"
-        )
-
-        render = {
-            "text": "Back",
-            "color": (255, 255, 255),
-            "antialias": True,
-        }
-        self.elem["back"] = ClassButton(
-            (300, 150), (100, 600), render, font, trigger="back"
-        )
+        self.elem["p1"] = ClassButton(32, 50, 691, 145, './gui/p2nr.png', './gui/p2r.png',"Joystick")
 
     def update(self, screen, group, Input, resize):
 
         screen.fill([121, 100, 100])
+        for e in self.elem.values():
+            act = e.update(screen, Input)
+            if act != None:
+                if act == "test":
+                    pass
+                elif act == "back":
+                    group[0] = self.back
+
+class Win:
+    def __init__(self, screen, back):
+        # self.surf = pg.Surface(surf)
+        # self.rect = self.surf.get_rect()
+        self.back = back
+        self.elem = {}
+
+        self.elem[''] = ClassButton()
+
+    def update(self, screen, group, Input, resize):
+
         for e in self.elem.values():
             act = e.update(screen, Input)
             if act != None:
