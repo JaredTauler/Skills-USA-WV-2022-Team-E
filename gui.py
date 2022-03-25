@@ -126,7 +126,7 @@ class Win:
 
         self.elem[''] = ClassButton()
 
-    def update(self, screen, group, Input, resize):
+    def update(self, screen, flow, Input, resize):
 
         for e in self.elem.values():
             act = e.update(screen, Input)
@@ -134,4 +134,4 @@ class Win:
                 if act == "test":
                     pass
                 elif act == "back":
-                    group[0] = self.back
+                    flow["state"] = self.back
