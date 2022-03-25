@@ -112,7 +112,7 @@ class P_Select:
         self.elem["p3"] = ClassButton(615, 170, 250, 350, './gui/p3nr.png', './gui/p3r.png', "Joystick")
         self.elem["p4"] = ClassButton(900, 170, 250, 350, './gui/p4nr.png', './gui/p4r.png', "Joystick")
 
-        self.elem["startgame"] = ClassButton(450, 550, 300, 150, './gui/start.png', './gui/starthover.png', "Button")
+        self.elem["startgame"] = ClassButton(850, 570, 300, 150, './gui/start.png', './gui/starthover.png', "Button")
 
     def update(self, screen, flow, Input, resize):
         if self.elem["startgame"].update(screen,Input):
