@@ -30,7 +30,7 @@ class Player(entity.Sprite):
 
 		self.aim_dir = (0, 0)
 
-		self.health = 100
+		self.health = 1
 
 		self.joystick = Seat.joystick
 
@@ -309,12 +309,11 @@ class Game:
 		)
 
 		self.internal_surf = pg.Surface(self.internal_surf_size, pg.HWSURFACE, ).convert_alpha()
-		print(screen)
 		self.internal_rect = self.internal_surf.get_rect(center=(screen.get_width() / 2, screen.get_height() / 2))
 		self.internal_surf_size_vector = pg.math.Vector2(self.internal_surf_size)
 
 		self.space = pm.Space()  # PyMunk simulation
-		self.space.gravity = (0, .1)
+		self.space.gravity = (0, 0)
 
 		dir = "map/map1/"
 		img = pg.image.load(dir + "rainy.png").convert()
@@ -376,8 +375,8 @@ class Game:
 				obj.update(self, input, e, )
 
 		for player in self.group["player"]:
-			if len(player.kills) == 10:
-				flow["state"] = gui.Win(player.PlayerID) # Handoff gameflow to win GUI
+			if len(player.kills) == 1:
+				flow["state"] = gui.Win(flow, screen, player) # Handoff gameflow to win GUI
 
 		blit = pg.transform.scale(self.internal_surf, screen.get_rect().size)
 

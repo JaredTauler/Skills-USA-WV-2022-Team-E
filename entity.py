@@ -259,12 +259,15 @@ class BananaParticle(Particle):
 		player = data["player"]
 		shape = arbiter.shapes[1]
 
-		player.damage.append(
-			{
-				"damage": arbiter.total_ke * (shape.body.mass * 10),
-				"author": shape.body.ParentObject.author
-			}
-		)
+		try:
+			player.damage.append(
+				{
+					"damage": arbiter.total_ke * (shape.body.mass * 10),
+					"author": shape.body.ParentObject.author
+				}
+			)
+		except:
+			pass
 
 		Destroy(game, shape, space)
 

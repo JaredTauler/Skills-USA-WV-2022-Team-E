@@ -21,10 +21,11 @@ class ClassPlayArea():
         self.zoom = 2
 
 class Seat():
-    def __init__(self, color):
+    def __init__(self, color, name):
         self.color = color
         self.joystick = None
         self.ready = 0
+        self.name = name
 
 class ClassEventHandle():
     def update(self, surface):
@@ -74,10 +75,10 @@ CLOCK = pg.time.Clock()
 
 FLOW = {}
 FLOW["seat"] = []
-FLOW["seat"].append(Seat([255,0,0]))
-FLOW["seat"].append(Seat([0,255,0]))
-FLOW["seat"].append(Seat([0,0,255]))
-FLOW["seat"].append(Seat([255,255,0]))
+FLOW["seat"].append(Seat([255,0,0], "Red Ryder"))
+FLOW["seat"].append(Seat([0,255,0], "Mean Green"))
+FLOW["seat"].append(Seat([0,0,255], "Little Boy Blue"))
+FLOW["seat"].append(Seat([255,255,0], "Minion"))
 
 # Assign controllers to seats.
 for i, j in zip(

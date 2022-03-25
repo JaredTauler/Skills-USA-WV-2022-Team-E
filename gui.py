@@ -85,9 +85,41 @@ class MainMenu:
                 playing += 1
         if playing >= 1 and not fail:
             flow["state"] = game.Game(flow, Input, screen)
-        
+
+        screen.blit(
+            self.surf,
+            (0,0)
+        )
 
 
+class Win():
+    def __init__(self, flow, screen,  player):
+        self.surf = pg.Surface((1920,1080))
+        self.winner = player
+        winner_seat = flow["seat"][player.PlayerID]
+        font = pg.font.Font(None, 32)
+
+        c = [255,255,255]
+        self.lines = [
+            [font.render(f"Court adjourned!", True, c), 1],
+            [player.surf, 1],
+            [font.render(f"{winner_seat.name} has won this trial!", True, c), 1],
+            [font.render(f"Throughout due process they:", True, c), 1],
+            [font.render(f"Blew themselves up {self.winner.suicide} times.", True, c), 1],
+            [font.render(f"Press A to return to the main menu.", True, c), 1],
+        ]
+
+
+
+    def update(self, screen, flow, Input, resize):
+        self.surf.fill([0,0,0,0])
+
+        for i, line in enumerate(self.lines):
+            line, dist = line
+            # height = line.get_height() + (20* (i + 1))
+            height = (50* i) + line.get_height()
+            print(height)
+            self.surf.blit(line, line.get_rect(center=(screen.get_width()/2, height)))
         screen.blit(
             self.surf,
             (0,0)
