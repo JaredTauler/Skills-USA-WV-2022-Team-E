@@ -21,9 +21,9 @@ class ClassPlayArea():
         self.zoom = 2
 
 class Joystick():
-    def __init__(self):
+    def __init__(self, id):
         self.type = "joy"
-        self.joystick = pg.joystick.Joystick(0)
+        self.joystick = pg.joystick.Joystick(id)
 
 
 class Keyboarder():
@@ -42,7 +42,10 @@ class ClassEventHandle():
     def __init__(self):
         self.Controllers = []
         self.Controllers.append(
-            Joystick()
+            Joystick(0)
+        )
+        self.Controllers.append(
+            Joystick(1)
         )
 
     def update(self, surface):
@@ -98,13 +101,12 @@ GROUP[0] = gui.MainMenu(PLAYAREA[0])
 while True:
     input, resize = INPUT.update(PLAYAREA[0].surf)
     GROUP[0].update(SCREEN, GROUP, input, resize)
-
-    pg.display.flip()
+    pg.display.update()
 
     pg.display.set_caption(str(CLOCK.get_fps()))
     if pg.key.get_pressed()[32]:
         CLOCK.tick(5)
     else:
-        CLOCK.tick(60)
+        CLOCK.tick(2000)
         pass
 

@@ -1,11 +1,15 @@
+import random
+
 from function import *
 import entity
 import pygame
 import pygame.draw
 import pymunk as pm
 
-class Player():
+class Player(entity.Sprite):
 	def __init__(self, game, PlayerID, controller):
+		super().__init__()
+		self.PlayerID = PlayerID
 		self.InputID = PlayerID
 		self.collision_ID = PlayerID  # Might have to be changed in future
 
@@ -16,15 +20,11 @@ class Player():
 		self.shape.collision_type = self.collision_ID
 		self.shape.density = 1
 		self.shape.friction = 1
-		self.shape.elasticity = .3
+		self.shape.elasticity = .1
 		game.space.add(self.body, self.shape)
 
-		self.surf = pg.Surface((32, 32))
-		pygame.draw.rect(
-			self.surf,
-			[255, 255, 255],
-			(0, 0, 32, 32)
-		)
+		self.surf = pg.Surface((32, 32)).convert_alpha()
+		self.surf.fill([255,255,255])
 
 		self.aim_dir = (0, 0)
 
@@ -38,17 +38,77 @@ class Player():
 
 		self.rumble_tick = 0
 		self.rumbling = False
+		self.rotate = True
+
+		self.dead = False
+		self.respawn = 0
+		self.color = [255,255,255]
+		self.kills = []
+		self.suicide = 0
+
+		## Pointer
+		# Load animation
+		img = pg.image.load("gui/pointer.png")
+		self.pointer_surfs = strip_from_sheet(img, (0,0), (16,16))
+		self.pointer_position = None
+
+		self.action_cooldown = 0
+		self.action_cooldown_max = 100
+
+	def stop_rumble(self, controller):
+		if self.rumbling:
+			controller.joystick.stop_rumble()
+			self.rumbling = False
+
+	def start_rumble(self, controller):
+		if not self.rumbling:
+			controller.joystick.rumble(100, 100, 0)
+			self.rumbling = True
 
 	def update(self, *args):
+		# print(self.health)
 		# print(self.body.position)
 		game = args[0]
 		# print(len(game.space.bodies))
 		input = args[1]
 
+		controller = self.controller
+		if self.dead: # Dead
+			self.stop_rumble(controller)
+			self.respawn -= 1
+
+			# Respawn logic
+			if self.respawn <= 0:
+				self.dead = False
+				self.health = 100
+				game.space.add(self.body)
+
+				# Find least busy spawn point
+				best_point = None
+				best_dist = None
+				for point in game.PlayerSpawnPoints:
+					for player in game.group["player"]:  # Check every players pos
+						if player is self:  # Dont care about self
+							continue
+
+						dist = math.dist(player.body.position, point["position"])
+						if best_dist == None:
+							best_dist = dist
+							best_point = point
+
+						# new best point set to current distance if current distance bigger than best point.
+						elif dist > best_dist:
+							print(dist, best_dist)
+							best_dist = dist
+							best_point = point
+
+				self.body.position = best_point["position"]
+
+			return
+
 		# Get input
 		dir = [0, 0]
 		action = False
-		controller = self.controller
 		# Keyboard
 		if controller.type == "key":
 			for map in controller.order:
@@ -89,33 +149,48 @@ class Player():
 		# Calculate damage
 		if len(self.damage):
 			while len(self.damage): # while there are items in list
-				self.rumble_tick += self.damage[0]
+				self.rumble_tick += self.damage[0]["damage"]
+				self.health -= self.damage[0]["damage"]
+
+				# On death
+				if self.health <= 0 and not self.dead:
+					author = self.damage[0]["author"]
+					if author == self.PlayerID:
+						self.suicide += 1
+					else:
+						author.kills.append(self.PlayerID)
+					game.space.remove(self.body)
+					self.dead = True
+					self.respawn = 500
+					# Death particles
+					for i in range(random.randint(30, 60)):
+						game.group["entity"].append(
+							entity.PlayerDeathParticle(
+								game.space,
+								self.body.position,
+								self.color
+							)
+						)
 				self.damage.pop(0)
 
 			self.rumble_tick = round(self.rumble_tick)
 			self.rumble_tick =  clamp(self.rumble_tick,0,60)
 
-		print(self.rumble_tick)
+
+
+		# Rumble logic
 		if self.rumble_tick <= 0:
-			if self.rumbling:
-				controller.joystick.stop_rumble()
-				self.rumbling = False
+			self.stop_rumble(controller)
 		else:
 			self.rumble_tick -= 1
-			if not self.rumbling:
-				controller.joystick.rumble(100,100,0)
-				self.rumbling = True
-
-
-
+			self.start_rumble(controller)
 
 		x = int(self.shape.body.position[0])
 		y = int(self.shape.body.position[1])
 
 		if action:
-
-			if not self.bruh:
-				self.bruh = True
+			if self.action_cooldown <= 0:
+				self.action_cooldown = self.action_cooldown_max
 				# 	game.group["entity"].append(
 				# 		Fire(
 				# 			game.space,
@@ -124,17 +199,41 @@ class Player():
 				# 			game.group
 				# 		)
 				# 	)
-				game.group["entity"].append(entity.Banana(game, self.aim_dir, self.body.position))
-		else:
-			self.bruh = False
+				game.group["entity"].append(
+					entity.Banana(
+						game,
+						self.aim_dir,
+						self.pointer_position,
+						self
+					)
+				)
+
+		elif self.action_cooldown:
+			self.action_cooldown -= 1
 
 		mvspd = .2
 		self.body.velocity = SumTup((dir[0] * mvspd, dir[1] * mvspd), self.body.velocity)
+		self.draw(game)
 
-		game.internal_surf.blit(self.surf,
-								(x, y)
-								)
+		# Pointer
+		d = 50
+		rad = JoyToRad(self.aim_dir)
+		pos = self.body.position
+		x = pos.x + (d * math.sin(rad))
+		y = pos.y + (d * math.cos(rad))
+		self.pointer_position = (x,y)
 
+		# Calculate which pointer frame to display
+		a = self.action_cooldown_max/len(self.pointer_surfs) # when to increment (eg: 4/2=2, change frame every 2 ticks)
+		# where countdown is, -max because we want the number to count up, +1 so no divide by 0 error
+		b = (self.action_cooldown-self.action_cooldown_max) + 1
+
+		index = -round(b / a)-1
+		# Draw
+		image, rect = rot_center(self.pointer_surfs[index], x,y)
+		game.internal_surf.blit(
+			image, rect
+		)
 
 # Tiles
 class TileLayer():
@@ -144,17 +243,19 @@ class TileLayer():
 		self.clean_surf = pg.Surface(internal_surf_size, pg.HWSURFACE)
 		self.surf = self.clean_surf.copy()
 
-	def draw(self, screen, bg):
+	def draw(self, screen):
 		self.surf = self.clean_surf.copy()
-		self.surf.blit(bg, (0, 0))
+		# self.surf.blit(bg, (0, 0))
 		for tile in self.tiles:
 			x = int(tile.shape.body.position[0])
 			y = int(tile.shape.body.position[1])
-
-			self.surf.blit(
-				self.tilemap[tile.textureid],
-				(x, y, 32, 32)
-			)
+			try:
+				self.surf.blit(
+					self.tilemap[tile.textureid],
+					(x, y, 32, 32)
+				)
+			except:
+				pass
 		self.surf = pg.transform.scale(self.surf, screen.get_rect().size)
 
 
@@ -181,33 +282,37 @@ class Game:
 		n = 32
 		dir = "map/map1/"  # base dir from which files being getten from.
 
-		def strip_from_sheet(sheet, start, size, columns, rows=1):
-			frames = []
-			for j in range(rows):
-				for i in range(columns):
-					location = (start[0] + size[0] * i, start[1] + size[1] * j)
-					frames.append(sheet.subsurface(pg.Rect(location, size)))
-			return frames
-
 		sheet = pg.image.load(dir + 'rocks.png')
-		TL.tilemap = strip_from_sheet(sheet, (0, 0), (32, 32), 9, 4)
+		t = 32
+		TL.tilemap = strip_from_sheet(sheet, (0, 0), (t, t))
 
 		import json
 		with open(dir + "map1.json") as f:
 			js = json.load(f)
 			x = 0
 			y = 0
-			for gid in js["layers"][0]["data"]:
-				if gid != 0:
-					gid = gid - 1
-					TL.tiles.append(Tile((n, n), (x * n, y * n), space, gid))
+			for layer in js["layers"]:
+				if layer["name"] == "spawner":
+					for point in layer["objects"]:
+						self.PlayerSpawnPoints.append(
+							{
+								"position": (point["x"], point["y"])
+							}
+						)
 
-				x += 1
-				if x == js["width"]:
-					y += 1
-					x = 0
+				elif layer["name"] == "terrain":
+					for gid in layer["data"]:
+						if gid != 0:
+							TL.tiles.append(Tile((n, n), (x * n, y * n), space, gid - 1))
+
+						x += 1
+						if x == js["width"]:
+							y += 1
+							x = 0
+
 
 	def __init__(self, screen, input):
+		self.PlayerSpawnPoints = []
 		self.screen = screen
 		self.surf = None
 		self.zoom_scale = .5
@@ -234,7 +339,7 @@ class Game:
 
 		self.Terrain = TileLayer(self.internal_surf_size)
 		self.LoadMap(self.Terrain, self.space)
-		self.Terrain.draw(screen, self.bg)
+		self.Terrain.draw(screen)
 
 		self.group = {}
 
@@ -243,9 +348,11 @@ class Game:
 
 		self.group["player"] = []
 
-		self.group["player"].append(Player(self, 0, input["controller"][0]))
+		self.group["player"].append(Player(self, 1, input["controller"][0]))
+		self.group["player"].append(Player(self, 2, input["controller"][1]))
 
 		self.group["entity"] = []
+
 
 		# Collision IDs:
 		for c in [
@@ -268,16 +375,30 @@ class Game:
 			handler.data["game"] = self
 			handler.begin = c.Collide_Wall
 
+		self.rects = []
+
 	def update(self, screen, group, input, resize):
 		if resize:
-			self.Terrain.draw(screen, self.bg)
+			self.Terrain.draw(screen)
+			screen.blit(self.Terrain.surf, (0, 0))
+			pg.display.update()
 		self.space.step(1)  # Step pymunk sim
 
 		# Update entities
-		self.internal_surf.fill([0, 0, 0, 0])
+		self.internal_surf.fill([0,0,0,0])
 		for e in self.group.values():
 			for obj in e:
 				obj.update(self, input, e)
+
+		for player in self.group["player"]:
+			print(len(player.kills))
+			# kills = 0
+			# print(len([i if i != player.PlayerID else None for i in player.kills]))
+
+
+		# blit = pg.transform.scale(self.internal_surf, (400, 300))
 		blit = pg.transform.scale(self.internal_surf, screen.get_rect().size)
+		#
+		screen.blit(self.bg, (0,0))
 		screen.blit(self.Terrain.surf, (0, 0))
 		screen.blit(blit, (0, 0))

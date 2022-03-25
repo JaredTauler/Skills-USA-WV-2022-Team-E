@@ -6,17 +6,20 @@ from function import *
 import pymunk as pm
 
 def Destroy(game, shape, space):
-	space.remove(shape, shape.body)
-	game.group["entity"].remove(
-		shape.body.ParentObject
-	)
-	shape.body.ParentObject = None
+	try:
+		space.remove(shape, shape.body)
+		game.group["entity"].remove(
+			shape.body.ParentObject
+		)
+		shape.body.ParentObject = None
+	except:
+		pass
 
 class Sprite():
 	def __init__(self):
 		self.surf = None
 		self.last_angle = None
-		self.last_imagecenter = None
+		self.last_imagerect = None
 
 		self.shape = None
 		self.body = None
@@ -29,29 +32,38 @@ class Sprite():
 
 		if self.rotate:
 			if self.last_angle == self.body.angle:
-				image, center = rot_center(
+				image, rect = rot_center(
 					self.last_imagecenter[0],
 					x, y
 				)
 			else:
-				image, center = rot_center(
+				image, rect = rot_center(
 					self.surf,
 					x, y,
 					-self.body.rotation_vector.angle_degrees
 				)
 				self.last_angle = self.body.angle
-				self.last_imagecenter = image, center
+				self.last_imagecenter = image, rect
 		else:
-			image, center = rot_center(self.surf, x, y)
-			center = self.surf.get_rect(center=self.surf.get_rect(center=(x, y)).center)
+			image, rect = rot_center(self.surf, x, y)
+			# rect = self.surf.get_rect(center=self.surf.get_rect(center=(x, y)))
+		def world(rect):
+			# rect.w += 8
+			# rect.h += 8
+			rect.x += 16
+			rect.y += 16
+			return rect
 
+		# print(world(rect))
 		game.internal_surf.blit(
 			image,
+			# rect
 			(
-				center.x + 16,
-				center.y + 16,
+				rect.x,
+				rect.y
 			)
 		)
+		# game.rects.append(world(rect))
 
 class Throwable(Sprite):
 	def __init__(self,
@@ -83,27 +95,41 @@ class Banana(Throwable):
 
 	@staticmethod
 	def Collide_Wall(arbiter, space, data):
-		# if random.choices([True, False], weights = (1,4))[0]:
+		# if random.choices([True, False], weights = (1,4))[0]: # Chance to not detonate
 		if True:
 			game = data["game"]
 			shape = arbiter.shapes[1]
-			# print(shape.body.rotation_vector.angle_degrees)
+
+			# Determine rather to shoot particles horizontal of vertical
+			points = arbiter.contact_point_set.points[0]
+			a = points.point_a # banana
+			b = points.point_b  # wall
+			# If hitting a vertical wall, the difference between the y contact points will be less than that of the x contact
+			# points
+			vertical = abs(a.x - b.x) > (abs(a.y- b.y))
 			v = shape.body.rotation_vector.angle_degrees
+
 			rad = lambda: math.radians(
-				( 180 if random.choice([True,False]) else 0) +
-				((v+90) + random.randint(-1,1))
+				( 180 if random.choice([True,False]) else 0) + # which way particle goes
+				(
+					(0 if vertical else 90) +
+					random.randint(-3,3)
+				)
 			)
 
+			# Create particles
 			particles = []
-			for i in range(random.randrange(10, 20)):
-				game.group["entity"].append(
-					BananaParticle(
-						game.space,
-						shape.body.position,
-						rad(),
-						velocity=random.randint(5,15)
+			if shape.body.ParentObject:
+				for i in range(random.randrange(10, 20)):
+					game.group["entity"].append(
+						BananaParticle(
+							game.space,
+							shape.body.position,
+							rad(),
+							random.randint(5,15),
+							shape.body.ParentObject.author
+						)
 					)
-				)
 
 			space.remove(shape, shape.body)
 			try:
@@ -115,10 +141,11 @@ class Banana(Throwable):
 			shape.body.ParentObject = None
 
 			return False
-		else:
+		else: #Keep processing.
 			return True
 
-	def __init__(self, game, aim_dir, spawn):
+	def __init__(self, game, aim_dir, spawn, author):
+		self.author = author
 		x = 32
 		y = 16
 		super().__init__(
@@ -164,32 +191,47 @@ class Particle(Sprite):
 			math.cos(throw_rad) * velocity
 		)
 
-		self.death_countdown = 0
+		# For fading away
+		self.fading = False
 		self.alpha = 255
+		self.start_ticker()
+
+		# Keep a reference to this Object on self.body so we can smuggle it into Collision_Callback.
+		self.body.ParentObject = self
+		self.ticker_function = None
+
+	def start_ticker(self):
+		self.ticker = 0
+		self.tick_cycle = random.randint(5, 10)
+
+	def Fade(self, *args):
+		game = args[0]
+		# self.Die(game)
+		self.ticker += 1
+		if self.ticker == self.tick_cycle:  # Cycle over
+			self.start_ticker()  # Restart
+			if self.ticker_function:
+				self.ticker_function()
 
 
 	def Die(self, *args):
 		game = args[0]
 		if self.body.position[0] < 0 or self.body.position[0] > game.internal_surf_size[0] or \
 				self.body.position[1] < 0 or self.body.position[1] > game.internal_surf_size[1]:
-			game.space.remove(self.shape, self.body)
-			game.group["entity"].remove(
-				self.body.ParentObject
-			)
-			self.body.ParentObject = None
-		#
+			Destroy(game, self.shape, game.space)
 
 
-		self.death_countdown -= 1
-		if self.death_countdown <= 0:
+		# print(self.body.velocity)
+
+		if self.fading:
 			self.alpha -= 1
 			if self.alpha <= 200:
 				self.alpha -= 7
 				try:
 					self.body.collision_type = 0
-				except: pass
+				except:
+					pass
 				if self.alpha <= 0:
-					print("BRUH")
 					try:
 						game.space.remove(self.shape, self.body)
 						game.group["entity"].remove(
@@ -197,8 +239,15 @@ class Particle(Sprite):
 						)
 						self.body.ParentObject = None
 					except: pass
-		if self.alpha < 0:
-			self.alpha = 0
+			if self.alpha < 0:
+				self.alpha = 0
+		elif (abs(self.body.velocity.x) + abs(self.body.velocity.y)) < 1:
+			self.fading = True
+
+		# print((abs(self.body.velocity.x) + abs(self.body.velocity.y)))
+		# self.death_countdown -= 1
+		# if self.death_countdown <= 0:
+		#
 
 class BananaParticle(Particle):
 	Collision_ID = 12
@@ -210,7 +259,10 @@ class BananaParticle(Particle):
 		shape = arbiter.shapes[1]
 
 		player.damage.append(
-			arbiter.total_ke * (shape.body.mass * 10)
+			{
+				"damage": arbiter.total_ke * (shape.body.mass * 10),
+				"author": shape.body.ParentObject.author
+			}
 		)
 
 		Destroy(game, shape, space)
@@ -221,8 +273,9 @@ class BananaParticle(Particle):
 	def Collide_Wall(arbiter, space, data):
 		return True
 
-	def __init__(self, space, position, throw_rad, velocity):
+	def __init__(self, space, position, throw_rad, velocity, author):
 		radius = random.randint(1, 6)
+		self.author = author
 
 		super().__init__(
 			space,
@@ -235,24 +288,10 @@ class BananaParticle(Particle):
 		self.shape.density = .001
 		self.surf = pg.Surface((radius * 2, radius * 2), pg.SRCALPHA).convert_alpha()
 		self.surf.fill([255, 255, 0])
-		self.start_ticker()
 
-		self.death_countdown = 100
-		self.alpha = 255
+		self.death_countdown = 300
 
-		# Keep a reference to this Object on self.body so we can smuggle it into Collision_Callback.
-		self.body.ParentObject = self
-
-	def start_ticker(self):
-		self.ticker = 0
-		self.tick_cycle = random.randint(5, 10)
-
-	def update(self, *args):
-		game = args[0]
-		self.Die(game)
-		self.ticker += 1
-		if self.ticker == self.tick_cycle:  # Cycle over
-			self.start_ticker()  # Restart
+		def func():
 			self.surf.fill(
 				[
 					random.randint(200, 255),
@@ -261,6 +300,40 @@ class BananaParticle(Particle):
 					self.alpha
 				]
 			)
+		self.ticker_function = func
+
+
+	def update(self, *args):
+		game = args[0]
+		self.Fade(game)
+		self.Die(game)
+		self.draw(game)
+
+class PlayerDeathParticle(Particle):
+	def __init__(self, space, position, color):
+		radius = random.randint(2, 3)
+
+		super().__init__(
+			space,
+			radius,
+			position,
+			math.radians(random.randint(0,360)),
+			velocity=random.randint(15,20),
+		)
+		# self.shape.collision_type = BananaParticle.Collision_ID
+		self.shape.density = .001
+		self.surf = pg.Surface((radius * 2, radius * 2), pg.SRCALPHA).convert_alpha()
+		self.surf.fill(color)
+
+		# Keep a reference to this Object on self.body so we can smuggle it into Collision_Callback.
+		self.body.ParentObject = self
+
+
+
+	def update(self, *args):
+		game = args[0]
+		self.Fade(game)
+		self.Die(game)
 		self.draw(game)
 
 class Fire(Particle):
@@ -271,11 +344,7 @@ class Fire(Particle):
 		print("BRUH")
 		game = data["game"]
 		shape = arbiter.shapes[1]
-		space.remove(shape, shape.body)
-		game.group["entity"].remove(
-			shape.body.ParentObject
-		)
-		shape.body.ParentObject = None
+		Destroy(data["game"], shape, space)
 
 		return False
 
@@ -283,7 +352,7 @@ class Fire(Particle):
 	def Collide_Wall(arbiter, space, data):
 		return True
 
-	def __init__(self, space, position, throw_rad):
+	def __init__(self, space, position, throw_rad, velocity):
 		radius = random.randint(2, 4)
 
 		super().__init__(
@@ -291,6 +360,7 @@ class Fire(Particle):
 			radius,
 			position,
 			throw_rad,
+			velocity
 		)
 		self.surf = pg.Surface((radius * 2, radius * 2), pg.SRCALPHA).convert_alpha()
 		self.surf.fill([255, 0, 0])

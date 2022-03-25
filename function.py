@@ -70,12 +70,22 @@ def overlap(rect1, rect2):
 	)
 
 
+def strip_from_sheet(sheet, start, size):
+	columns = int(sheet.get_width() / size[0])
+	rows = int(sheet.get_height() / size[1])
+	frames = []
+	for j in range(rows):
+		for i in range(columns):
+			location = (start[0] + size[0] * i, start[1] + size[1] * j)
+			frames.append(sheet.subsurface(pg.Rect(location, size)))
+	return frames
+
 def rot_center(image, x, y, angle=None):
 	if angle != None:
 		rotated_image = pg.transform.rotate(image, angle)
 	else:
 		rotated_image = image
-	new_rect = rotated_image.get_rect(center=image.get_rect(center=(x, y)).center)
+	new_rect = rotated_image.get_rect(center=image.get_rect(center=(x+16, y+16)).center)
 
 	return rotated_image, new_rect
 
