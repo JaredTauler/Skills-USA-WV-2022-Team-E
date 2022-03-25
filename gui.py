@@ -114,15 +114,15 @@ class P_Select:
 
         self.elem["startgame"] = ClassButton(450, 550, 300, 150, './gui/start.png', './gui/starthover.png', "Button")
 
-    def update(self, screen, group, Input, resize):
+    def update(self, screen, flow, Input, resize):
         if self.elem["startgame"].update(screen,Input):
-            group[0] = game.Game(screen, Input)
+            flow[0] = game.Game(screen, Input)
         screen.fill([121, 100, 100])
         for e in self.elem.values():
             act = e.update(screen, Input)
             if act != None:
                 if act == "test":
-                    group[0] = game.Game(screen, Input)
+                    flow[0] = game.Game(screen, Input)
                 elif act == "back":
                     flow["state"] = self.back
 
