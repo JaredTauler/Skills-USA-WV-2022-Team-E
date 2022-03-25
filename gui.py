@@ -80,24 +80,40 @@ class MainMenu:
 
         font = pg.font.SysFont("calibri", 100)
 
-        self.elem["background"] = ClassButton(0,0,1200,800,'./gui/background.png','./gui/background.png','Button')
+        x = lambda x: RangeChange((0, 1200), (0, 1920), x)
+        y = lambda y: RangeChange((0, 1200), (0, 1920), y)
+        # self.elem["background"] = ClassButton(0,0,1200,800,'./gui/background.png','./gui/background.png','Button')
         self.elem["logo"] = ClassButton(32, 50, 653, 329, './gui/logo.png', './gui/logo.png', 'Button')
 
         self.elem["startcase"] = ClassButton(32,430,691,145,'./gui/startcase.png','./gui/startcasehover.png','Button')
         self.elem["quit"] = ClassButton(32,600,500,138,'./gui/quit.png','./gui/quithover.png','Button')
+        self.surf = pg.Surface((1200, 800))
+
+        self.rects = []
 
     def update(self, screen, flow, Input, resize):
-
+        self.surf.fill([0,0,0,0])
         # Events are called using the update of the Button now
-        if self.elem["startcase"].update(screen,Input):
-            flow["state"] = P_Select(screen, self)
+        if self.elem["startcase"].update(self.surf,Input):
+            flow["state"] = P_Select(self.surf, self)
 
-        if self.elem["quit"].update(screen,Input):
+        if self.elem["quit"].update(self.surf,Input):
             pg.quit()
 
         for e in self.elem.values():
-            act = e.update(screen, Input)
+            act = e.update(self.surf, Input)
 
+        max = self.surf.get_size()
+
+        # print(aspect_scale(self.surf.get_rect(), screen.get_rect()))
+        print(screen.get_size())
+        img = pg.transform.scale(self.surf, (400, 300))
+        # aspect_scale(self.surf.get_size(), screen.get_size()
+        img = pg.transform.scale(img, screen.get_size())
+        screen.blit(
+            img,
+            (0,0)
+        )
 
 
 class P_Select:
@@ -121,7 +137,7 @@ class P_Select:
 
         # Need to go to the ButtonClass and make the Image switch when the A button is pressed
 
-        for e in self.elem.values()     # hahah error to get your attention via comment
+        for e in self.elem.values():     # hahah error to get your attention via comment
             act = e.update(screen, Input)
             if act != None:
                 if act == "test":

@@ -1,5 +1,6 @@
 import random
 
+import gui
 from function import *
 import entity
 import pygame
@@ -16,7 +17,7 @@ class Player(entity.Sprite):
 		# pm
 		self.body = pm.Body()
 		self.body.position = (100, 100)
-		self.shape = pm.Poly.create_box(self.body, (32, 32))
+		self.shape = pm.Poly.create_box(self.body, (32, 32), radius=.1)
 		self.shape.collision_type = self.collision_ID
 		self.shape.density = 1
 		self.shape.friction = 1
@@ -30,8 +31,6 @@ class Player(entity.Sprite):
 		self.aim_dir = (0, 0)
 
 		self.health = 100
-
-		self.bruh = False
 
 		self.joystick = Seat.joystick
 
@@ -368,7 +367,7 @@ class Game:
 
 		self.rects = []
 
-	def update(self, screen, group, input, resize):
+	def update(self, screen, flow, input, resize):
 		if resize:
 			self.Terrain.draw(screen)
 			screen.blit(self.Terrain.surf, (0, 0))
@@ -382,15 +381,11 @@ class Game:
 				obj.update(self, input, e, )
 
 		for player in self.group["player"]:
-			pass
-			# print(len(player.kills))
-			# kills = 0
-			# print(len([i if i != player.PlayerID else None for i in player.kills]))
+			if len(player.kills) == 10:
+				flow["state"] = gui.Win(player.PlayerID) # Handoff gameflow to win GUI
 
-
-		# blit = pg.transform.scale(self.internal_surf, (400, 300))
 		blit = pg.transform.scale(self.internal_surf, screen.get_rect().size)
-		#
+
 		screen.blit(self.bg, (0,0))
 		screen.blit(self.Terrain.surf, (0, 0))
 		screen.blit(blit, (0, 0))

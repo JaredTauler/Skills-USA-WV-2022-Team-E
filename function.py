@@ -68,7 +68,30 @@ def overlap(rect1, rect2):
 		top(rect1) < bottom(rect2) and
 		bottom(rect1) > top(rect2)
 	)
+def aspect_scale(rect, desired_rect):
+    ix,iy = rect
+    if ix > iy:
+        # fit to width
+        scale_factor = desired_rect[0]/float(ix)
+        sy = scale_factor * iy
+        if sy > desired_rect[1]:
+            scale_factor = desired_rect[1]/float(iy)
+            sx = scale_factor * ix
+            sy = desired_rect[1]
+        else:
+            sx = desired_rect[0]
+    else:
+        # fit to height
+        scale_factor = desired_rect[1]/float(iy)
+        sx = scale_factor * ix
+        if sx > desired_rect[0]:
+            scale_factor = desired_rect[0]/float(ix)
+            sx = desired_rect[0]
+            sy = scale_factor * iy
+        else:
+            sy = desired_rect[1]
 
+    return sx, sy
 
 def strip_from_sheet(sheet, start, size):
 	columns = int(sheet.get_width() / size[0])
