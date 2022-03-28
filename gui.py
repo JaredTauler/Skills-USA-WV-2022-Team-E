@@ -76,7 +76,6 @@ class MainMenu:
         fail = False
         playing = 0
         for ready, seat in zip(self.ready, flow["seat"]):
-            print(seat.joystick)
             if seat.joystick is None:            
                 continue
             if seat.ready == 0:

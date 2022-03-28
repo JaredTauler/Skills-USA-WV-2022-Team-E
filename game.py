@@ -122,7 +122,6 @@ class Player(entity.Sprite):
 
 						# new best point set to current distance if current distance bigger than best point.
 						elif dist > best_dist:
-							print(dist, best_dist)
 							best_dist = dist
 							best_point = point
 
@@ -133,32 +132,26 @@ class Player(entity.Sprite):
 			return
 
 		# Get input
-		dir = [0, 0]
-		action = False
 		# Joystick
-		dir = (
+		a = (
 			self.joystick.get_axis(0),
 			self.joystick.get_axis(1)
 		)
 
-		aim_dir = (
+		self.dir = deadzone(a, .7)
+
+		a = (
 			self.joystick.get_axis(2),
 			self.joystick.get_axis(3)
 		)
+		if joy_easy(a, .4):
+			self.aim_dir = a
 
-		if not_deadzone(aim_dir, .5):
-			self.aim_dir = aim_dir
-		# print(aim_dir)
-		action = self.joystick.get_button(0) == 1
-
-		# Right Trigger
-		v = RangeChange(
-			(-1, 1), (0, 1),
-			self.joystick.get_axis(5)
-		)
-		RightTrigger = v if v == 0 else False
-
-		# if self.body.velocity.y > 0: if
+		# Triggers
+		v = self.joystick.get_axis(4)
+		LeftTrigger = True if v != -1.0 else False
+		v = self.joystick.get_axis(5)
+		RightTrigger = True if v != -1.0 else False
 
 		# Calculate damage
 		if len(self.damage):
@@ -170,7 +163,7 @@ class Player(entity.Sprite):
 				# On death
 				if self.health <= 0 and not self.dead:
 					author = self.damage[0]["author"]
-					if author == self.PlayerID:
+					if author == self:
 						self.suicide += 1
 					else:
 						author.kills.append(self.PlayerID)
@@ -185,24 +178,33 @@ class Player(entity.Sprite):
 		x = int(self.shape.body.position[0])
 		y = int(self.shape.body.position[1])
 
-		if action:
+		if RightTrigger or LeftTrigger:
 			if self.action_cooldown <= 0:
 				self.action_cooldown = self.action_cooldown_max
-				print(self.pointer_position)
-				game.group["entity"].append(
-					entity.Banana(
-						game,
-						self.aim_dir,
-						self.pointer_position,
-						self
+				if RightTrigger:
+					game.group["entity"].append(
+						entity.Sniper(
+							game,
+							self.aim_dir,
+							self.pointer_position,
+							self
+						)
 					)
-				)
+				else:
+					game.group["entity"].append(
+						entity.Banana(
+							game,
+							self.aim_dir,
+							self.pointer_position,
+							self
+						)
+					)
 
 		elif self.action_cooldown:
 			self.action_cooldown -= 1
 
 		mvspd = .2
-		self.body.velocity = SumTup((dir[0] * mvspd, dir[1] * mvspd), self.body.velocity)
+		self.body.velocity = SumTup((self.dir[0] * mvspd, self.dir[1] * mvspd), self.body.velocity)
 		self.draw(game)
 
 		# Pointer
@@ -342,13 +344,19 @@ class Game:
 			if Flow["seat"][i].ready == 1:
 				self.group["player"].append(Player(self, j, i))
 
+		list = self.PlayerSpawnPoints.copy()
+		for i in self.group["player"]:
+			spawn = random.choice(list)
+			i.body.position = spawn["position"]
+
+			list.remove(spawn)
 
 		self.group["entity"] = []
 
 
 		# Collision IDs:
 		for c in [
-			entity.Fire, entity.Banana, entity.BananaParticle
+			entity.Fire, entity.Banana, entity.BananaParticle, entity.Sniper
 		]:
 			for player in self.group["player"]:
 				handler = self.space.add_collision_handler(

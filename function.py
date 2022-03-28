@@ -1,17 +1,45 @@
 import copy
 import pygame as pg
 import math
+
+def vertical_hit(points):
+	# Old function
+	# a = points.point_a  # banana
+	# b = points.point_b  # wall
+	# # If hitting a vertical wall, the difference between the y contact points will be less than that of the x contact
+	# # points
+	# return abs(a.x - b.x) > (abs(a.y - b.y))
+
+	a = points.point_a
+	b = points.point_b
+
+	vertical = False
+	if a.x == b.x:
+		vertical = False
+	if a.y == b.y:
+		vertical = True
+	return vertical
+
 def clamp(n, minn, maxn):
     return max(min(maxn, n), minn)
 
 def RadToDeg(rad):
 	return (rad / math.pi * 180) + (0 if rad > 0 else 360)
+
 def JoyToRad(a):
 	return math.atan2(a[0], a[1])
-def not_deadzone(a, deadzone):
+
+def joy_easy(a, deadzone):
 	for x in a:
 		if (-x if x < 0 else x) > deadzone:
 			return True
+
+def deadzone(b, deadzone):
+	a = [b[0], b[1]]
+	for i, x in enumerate(a):
+		if abs(x) < deadzone:
+			a[i] = 0
+	return a
 
 def RangeChange(Old, New, val):
     OldRange = (Old[1] - Old[0])
@@ -130,52 +158,52 @@ def DifTup(*a):
 		x[1] -= i[1]
 	return x
 # this is going to happen thousands of times a frame and needs to be quick
-
-left = lambda rect: rect[0][0]
-right = lambda rect: rect[0][0] + rect[1][0]
-top = lambda rect: rect[0][1]
-bottom = lambda rect: rect[0][1] + rect[1][1]
-def overlap(rect1, rect2):
-	return (
-		left(rect1) < right(rect2) and
-		right(rect1) > left(rect2) and
-		top(rect1) < bottom(rect2) and
-		bottom(rect1) > top(rect2)
-	)
-
-def draw_polygon(shape, screen):
-	verts = []
-	for v in shape.get_vertices():
-		n = SumTup(
-			v.rotated(shape.body.angle),
-			screen.location,
-			shape.body.position
-		)
-		verts.append(n)
-		return verts
-
-# AABB Collision.
-def CollideWorldRect(rect1: WorldRect, rect2: WorldRect):
-	# Determine if a collision is happening
-	if (
-		rect1.left() < rect2.right() and
-		rect1.right() > rect2.left() and
-		rect1.top() < rect2.bottom() and
-		rect1.bottom() > rect2.top()
-	):
-		# OK. collision is happening, which side is closest?
-		side = {
-			"left": abs(rect1.right() - rect2.left()), # left
-			"top": abs(rect1.bottom() - rect2.top()), # top
-			"right": abs(rect1.left() - rect2.right()), # right
-			"bottom": abs(rect1.top() - rect2.bottom()) # bottom
-		}
-
-		# Determine which is closest just by comparing
-		closest = "top"
-		for i in side.keys():
-			if side[i] < side[closest]:
-				closest = i
-		return closest, rect2
-
-	return None, None
+#
+# left = lambda rect: rect[0][0]
+# right = lambda rect: rect[0][0] + rect[1][0]
+# top = lambda rect: rect[0][1]
+# bottom = lambda rect: rect[0][1] + rect[1][1]
+# def overlap(rect1, rect2):
+# 	return (
+# 		left(rect1) < right(rect2) and
+# 		right(rect1) > left(rect2) and
+# 		top(rect1) < bottom(rect2) and
+# 		bottom(rect1) > top(rect2)
+# 	)
+#
+# def draw_polygon(shape, screen):
+# 	verts = []
+# 	for v in shape.get_vertices():
+# 		n = SumTup(
+# 			v.rotated(shape.body.angle),
+# 			screen.location,
+# 			shape.body.position
+# 		)
+# 		verts.append(n)
+# 		return verts
+#
+# # AABB Collision.
+# def CollideWorldRect(rect1: WorldRect, rect2: WorldRect):
+# 	# Determine if a collision is happening
+# 	if (
+# 		rect1.left() < rect2.right() and
+# 		rect1.right() > rect2.left() and
+# 		rect1.top() < rect2.bottom() and
+# 		rect1.bottom() > rect2.top()
+# 	):
+# 		# OK. collision is happening, which side is closest?
+# 		side = {
+# 			"left": abs(rect1.right() - rect2.left()), # left
+# 			"top": abs(rect1.bottom() - rect2.top()), # top
+# 			"right": abs(rect1.left() - rect2.right()), # right
+# 			"bottom": abs(rect1.top() - rect2.bottom()) # bottom
+# 		}
+#
+# 		# Determine which is closest just by comparing
+# 		closest = "top"
+# 		for i in side.keys():
+# 			if side[i] < side[closest]:
+# 				closest = i
+# 		return closest, rect2
+#
+# 	return None, None

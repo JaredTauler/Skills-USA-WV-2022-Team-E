@@ -54,8 +54,6 @@ class Sprite():
 			image, rect = rot_center(self.surf, x, y)
 			# rect = self.surf.get_rect(center=self.surf.get_rect(center=(x, y)))
 		def world(rect):
-			# rect.w += 8
-			# rect.h += 8
 			rect.x += 16
 			rect.y += 16
 			return rect
@@ -73,7 +71,7 @@ class Sprite():
 
 class Throwable(Sprite):
 	def __init__(self,
-				 space, size, position, throw_rad
+				 space, size, position, throw_rad, velocity = 10
 				 ):
 		super().__init__()
 
@@ -88,9 +86,113 @@ class Throwable(Sprite):
 
 		# Convert Joystick Values to an angle
 		self.body.velocity = (
-			math.sin(throw_rad) * 10,
-			math.cos(throw_rad) * 10
+			math.sin(throw_rad) * velocity,
+			math.cos(throw_rad) * velocity
 		)
+
+class Sniper(Throwable):
+	Collision_ID = 20
+
+	@staticmethod
+	def Collide_Player(arbiter, space, data):
+		game = data["game"]
+		player = data["player"]
+		shape = arbiter.shapes[1]
+
+		try:
+			player.damage.append(
+				{
+					"damage": arbiter.total_ke * (shape.body.mass * 10),
+					"author": shape.body.ParentObject.author
+				}
+			)
+		except:
+			pass
+
+		Sniper.Die(arbiter, game,shape,space)
+
+		return False
+
+	@staticmethod
+	def Collide_Wall(
+			arbiter,
+			space,
+			data,
+	):
+		game = data["game"]
+		shape = arbiter.shapes[1]
+		Sniper.Die(arbiter, game,shape,space)
+		return False
+
+	@staticmethod
+	def Die(arbiter, game, shape, space):
+		if shape.body.ParentObject:
+			def dir():
+				arb = arbiter.contact_point_set.points[0]
+				a = arb.point_a
+				b = arb.point_b
+
+				c = 0
+				if vertical:
+					if a.x > b.x:
+						c = 90
+					else:
+						c = -90
+				else:
+					if a.y > b.y:
+						c = 0
+					else:
+						c = 180
+
+
+				return c
+
+
+
+			points = arbiter.contact_point_set.points[0]
+			vertical = vertical_hit(arbiter.contact_point_set.points[0])
+			direction = dir()
+			rad = lambda: math.radians(
+				direction + random.randint(-2, 2)
+			)
+			for i in range(random.randrange(10, 20)):
+				game.group["entity"].append(
+					BananaParticle(
+						game.space,
+						shape.body.position,
+						rad(),
+						random.randint(3, 7),
+						shape.body.ParentObject.author,
+						(255, 255, 255)
+					)
+				)
+		Destroy(game, shape, space)
+
+	def __init__(self, game, aim_dir, spawn, author):
+		self.author = author
+		x = 32
+		y = 8
+		super().__init__(
+			game.space,
+			(x, y),
+			spawn,
+			JoyToRad(aim_dir),
+			15
+		)
+		self.mass = 0
+		self.shape.collision_type = Sniper.Collision_ID
+		self.body.ParentObject = self
+		self.rotate = True
+
+		rad = math.atan2(aim_dir[1], aim_dir[0])
+		self.body.angle = rad
+		self.surf = pg.Surface((x, y)).convert_alpha()
+		self.surf.fill([255,255,255])
+		# self.surf = pg.transform.scale(self.surf, (x, y))
+
+	def update(self, *args):
+		game = args[0]
+		self.draw(game)
 
 class Banana(Throwable):
 	Collision_ID = 11
@@ -108,10 +210,13 @@ class Banana(Throwable):
 			data,
 			will_detonate=False
 	):
-		if will_detonate is not False:
-			detonate = random.choices([True, False], weights = (1,4))[0] # Chance to not detonate
-		else:
-			detonate = True
+
+		detonate = True
+		if not will_detonate:
+			a = random.randint(1,100) # Chance to not detonate
+			if a > 30:
+				detonate = False
+			print(a)
 		if detonate:
 
 			game = data["game"]
@@ -119,18 +224,15 @@ class Banana(Throwable):
 
 			# Determine rather to shoot particles horizontal of vertical
 			points = arbiter.contact_point_set.points[0]
-			a = points.point_a # banana
-			b = points.point_b  # wall
-			# If hitting a vertical wall, the difference between the y contact points will be less than that of the x contact
-			# points
-			vertical = abs(a.x - b.x) > (abs(a.y- b.y))
+			vertical = vertical_hit(points)
 			v = shape.body.rotation_vector.angle_degrees
 
+
 			rad = lambda: math.radians(
-				( 180 if random.choice([True,False]) else 0) + # which way particle goes
+				(180 if random.choice([True, False]) else 0) +  # which way particle goes
 				(
-					(0 if vertical else 90) +
-					random.randint(-3,3)
+						(0 if vertical else 90) +
+						random.randint(-3, 3)
 				)
 			)
 
@@ -186,6 +288,7 @@ class Banana(Throwable):
 
 	def update(self, *args):
 		game = args[0]
+		print("BRUH")
 		self.draw(game)
 
 class Particle(Sprite):
@@ -289,7 +392,7 @@ class BananaParticle(Particle):
 	def Collide_Wall(arbiter, space, data):
 		return True
 
-	def __init__(self, space, position, throw_rad, velocity, author):
+	def __init__(self, space, position, throw_rad, velocity, author, color = (255, 255, 0)):
 		radius = random.randint(1, 6)
 		self.author = author
 
@@ -303,20 +406,20 @@ class BananaParticle(Particle):
 		self.shape.collision_type = BananaParticle.Collision_ID
 		self.shape.density = .001
 		self.surf = pg.Surface((radius * 2, radius * 2), pg.SRCALPHA).convert_alpha()
-		self.surf.fill([255, 255, 0])
+		self.surf.fill(color)
 
 		self.death_countdown = 300
 
-		def func():
-			self.surf.fill(
-				[
-					random.randint(200, 255),
-					random.randint(200, 255),
-					0,
-					self.alpha
-				]
-			)
-		self.ticker_function = func
+		# def func():
+		# 	self.surf.fill(
+		# 		[
+		# 			random.randint(200, 255),
+		# 			random.randint(200, 255),
+		# 			0,
+		# 			self.alpha
+		# 		]
+		# 	)
+		# self.ticker_function = func
 
 
 	def update(self, *args):
